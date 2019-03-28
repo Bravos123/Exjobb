@@ -22,6 +22,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     private LocationManager locationManager;
+    private LocationManager nmeaListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +41,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             return;
         }
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, locationListener);
+
+
+        nmeaListener = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        nmeaListener.addNmeaListener(new NmeaMessagesListener());
+
 
 
     }

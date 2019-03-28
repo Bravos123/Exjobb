@@ -9,10 +9,12 @@ import android.view.View;
 import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity implements Callback{
-    private int targetPermissions = 1;
+    private int targetPermissions = 2;
     private int allowedPermissions = 0;
 
     private Button startGMapsButton;
+    private Button RawGnssTestButton;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -22,6 +24,7 @@ public class MainActivity extends AppCompatActivity implements Callback{
 
     private void askForALlPermissions(){
         new AskForPremission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        new AskForPremission(this, Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS);
     }
 
     @Override
@@ -46,6 +49,15 @@ public class MainActivity extends AppCompatActivity implements Callback{
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, MapsActivity.class);
+                startActivity(i);
+            }
+        });
+
+        RawGnssTestButton = findViewById(R.id.rawGnssTestButton);
+        RawGnssTestButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(MainActivity.this, RawGnssTest.class);
                 startActivity(i);
             }
         });

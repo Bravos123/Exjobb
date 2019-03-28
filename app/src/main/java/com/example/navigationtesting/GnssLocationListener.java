@@ -1,18 +1,12 @@
 package com.example.navigationtesting;
 
+import android.location.GnssMeasurementsEvent;
 import android.location.Location;
 import android.location.LocationListener;
-import android.location.OnNmeaMessageListener;
 import android.os.Bundle;
+import android.util.Log;
 
-public class GPSListener implements LocationListener {
-    Callback callback;
-
-    public GPSListener(Callback callbackCLass){
-        callback = (Callback) callbackCLass;
-    }
-
-
+public class GnssLocationListener implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
 
@@ -32,5 +26,6 @@ public class GPSListener implements LocationListener {
     public void onProviderDisabled(String provider) {
 
     }
+
 
 }
