@@ -19,6 +19,7 @@ import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
+import static android.location.GnssMeasurement.STATE_CODE_LOCK;
 import static android.location.GnssMeasurement.STATE_GAL_E1C_2ND_CODE_LOCK;
 import static android.location.GnssMeasurement.STATE_GLO_TOD_DECODED;
 import static android.location.GnssMeasurement.STATE_TOW_DECODED;
@@ -35,7 +36,13 @@ public class RawGnssTest extends AppCompatActivity {
     private static final double NUMBER_NANO_SECONDS_14 = 14000000000.0;
     private static final double NUMBER_NANO_SECONDS_THREE_HOURS = 10800000000000.0;
 
-    private static final double LIGHT_SPEED_VACUUM_METERS_PER_SECOND = 299792458;
+    private static final int MAXTOWUNCNS = 50;//Max TOW Uncertanity
+
+    private static final double LIGHT_SPEED_VACUUM_METERS_PER_SECOND = 299792458.0;
+
+
+    private LocationManager nmeaListener;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +60,7 @@ public class RawGnssTest extends AppCompatActivity {
 
 
         //locationManager.registerGnssNavigationMessageCallback(gnssNavigationMessageListener);
-        locationManager.registerGnssMeasurementsCallback(gnssMeasurementListener);
+        //locationManager.registerGnssMeasurementsCallback(gnssMeasurementListener);
         //locationManager.registerGnssStatusCallback(gnssStatusListener);
 
 
@@ -62,6 +69,11 @@ public class RawGnssTest extends AppCompatActivity {
         Bundle bundle = new Bundle();
         locationManager.sendExtraCommand("gps", "force_time_injection", bundle);*/
 
+        //nmeaListener = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        //nmeaListener.addNmeaListener(new NmeaMessagesListener());
+
+        new RetrieveSatelliteEphemerides();
+
     }
 
 
@@ -69,12 +81,12 @@ public class RawGnssTest extends AppCompatActivity {
             new GnssNavigationMessage.Callback() {
                 @Override
                 public void onGnssNavigationMessageReceived(GnssNavigationMessage event) {
-                    Log.i("Project", event.toString());
+                    Log.i("Project", "Nagivation massage: "+event.toString());
                 }
 
                 @Override
                 public void onStatusChanged(int status) {
-                    Log.i("Project", "GnssNavigationMessage.Callback status: "+Integer.toString(status));
+                    //Log.i("Project", "GnssNavigationMessage.Callback status: "+Integer.toString(status));
                 }
             };
 
@@ -90,7 +102,6 @@ public class RawGnssTest extends AppCompatActivity {
                     Collection<GnssMeasurement> measurements = event.getMeasurements();
                     //Looping through each satellite in the constelation?
                     for(GnssMeasurement gnssM : measurements){
-
 
                         //Log.i("Project", );
 
@@ -158,18 +169,32 @@ public class RawGnssTest extends AppCompatActivity {
 
         }
 
-        //Log.i("Project", "contellationType: "+contellationType);
-        //Log.i("Project", "gnssM.getState(): "+gnssM.getState());
-        //Log.i("Project", "STATE_TOW_DECODED: "+Integer.toString(STATE_TOW_DECODED));
-        //Log.i("Project", "TEST:: "+(gnssM.getState() & STATE_TOW_DECODED)+"\n\n");
+        double pseudoRange = 0;
 
         //GNSS State descriptions: https://source.android.com/reference/hidl/android/hardware/gnss/1.0/IGnssMeasurementCallback#gnssmeasurementstate
 
         switch(contellationType){
             case 1:{//CONSTELLATION_GPS
                 if((gnssM.getState() & STATE_TOW_DECODED) > 0){
-                    //Log.i("Project", "CONSTELLATION_GPS");
-                    //measurementTime = TrxGnss % NUMBER_NANO_SECONDS_WEEK;
+                    double gpsTime = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
+                    double tRxGPS = gpsTime + gnssM.getTimeOffsetNanos();
+
+
+                    //double weekNumberNanos = Math.floor((-1.0 * event.getClock().getFullBiasNanos()) / NUMBER_NANO_SECONDS_WEEK) * NUMBER_NANO_SECONDS_WEEK;
+                    double weekNumberNanos = (-1.0 * event.getClock().getFullBiasNanos()) % NUMBER_NANO_SECONDS_WEEK;
+
+                    double gpsPseudoRange = (tRxGPS - weekNumberNanos - gnssM.getReceivedSvTimeNanos()) / 1e9 * LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
+
+                    //Health check on gps
+                    int measState = gnssM.getState();
+                    boolean codeLock = (measState & STATE_CODE_LOCK) > 0;
+                    boolean towDecoded = (measState & STATE_TOW_DECODED) > 0;
+                    boolean towUncertanity = gnssM.getReceivedSvTimeUncertaintyNanos() < MAXTOWUNCNS;
+
+                    if(codeLock && towDecoded && towUncertanity && gpsPseudoRange < 1e9){
+                        Log.i("Project", "CONSTELLATION_GPS");
+                        pseudoRange = gpsPseudoRange;
+                    }
                 }
             }
             case 2:{//CONSTELLATION_SBAS
@@ -194,15 +219,17 @@ public class RawGnssTest extends AppCompatActivity {
             }
             case 6:{//CONSTELLATION_GALILEO
                 //Galileo give two signals, we need to check their health status and use the best one: https://gnss-compare.readthedocs.io/en/latest/user_manual/android_gnssMeasurements.html
-
+                double galileoTime = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
+                double tTxGalileo = gnssM.getReceivedSvTimeNanos() + gnssM.getTimeOffsetNanos();
 
                 if(((gnssM.getState() & STATE_TOW_DECODED) > 0) || ((gnssM.getState() & STATE_TOW_KNOWN) > 0)){
-                    //Log.i("Project", "CONSTELLATION_GALILEO STATE_TOW_DECODED");
-                    measurementTime = TrxGnss % NUMBER_NANO_SECONDS_WEEK;
-                }else
-                if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
-                    //Log.i("Project", "CONSTELLATION_GALILEO STATE_GAL_E1C_2ND_CODE_LOCK");
-                    measurementTime = (TrxGnss % NUMBER_NANO_SECONDS_100_MILLI);
+                    double tRxGalileoTOW = TrxGnss % NUMBER_NANO_SECONDS_WEEK;
+                    Log.i("Project", "CONSTELLATION_GALILEO");
+                    pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
+                }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
+                    double tRxGalileoE1_2nd = galileoTime % NUMBER_NANO_SECONDS_100_MILLI;
+                    Log.i("Project", "CONSTELLATION_GALILEO");
+                    pseudoRange = ((galileoTime - tTxGalileo) % NUMBER_NANO_SECONDS_100_MILLI) * 1e-9 *LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
                 }
 
 
@@ -213,10 +240,11 @@ public class RawGnssTest extends AppCompatActivity {
             }
         }
 
-        if(measurementTime == -1){
+        /*if(measurementTime == -1){
             return 0;
-        }
+        }*/
         //return (measurementTime - gnssM.getReceivedSvTimeNanos()) * (LIGHT_SPEED_VACUUM_METERS_PER_SECOND * 0.000000001/*Convert m/s to m/ns*/);
-        return ((measurementTime - gnssM.getReceivedSvTimeNanos())/1000000000.0) * (LIGHT_SPEED_VACUUM_METERS_PER_SECOND);
+        //return ((measurementTime - gnssM.getReceivedSvTimeNanos())/1000000000.0) * (LIGHT_SPEED_VACUUM_METERS_PER_SECOND);
+        return pseudoRange;
     }
 }
