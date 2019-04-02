@@ -10,7 +10,9 @@ import org.apache.commons.net.ftp.FTPReply;
 import org.xml.sax.InputSource;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,6 +30,9 @@ import org.apache.commons.net.ftp.FTPClient;
 
 
 public class RetrieveSatelliteEphemerides {
+    /*
+    * Retrieves the RINEX Data of satellites
+    * */
     //Url templete of where the satellite ephemerides should be downloaded
     final String host = "igs.bkg.bund.de";//"ftp://igs.bkg.bund.de";
     static final String IGS_GALILEO_RINEX = "/IGS/BRDC/${yyyy}/${ddd}/BRDC00WRD_R_${yyyy}${ddd}0000_01D_EN.rnx.gz";
@@ -62,7 +67,7 @@ public class RetrieveSatelliteEphemerides {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            Log.i("Project", "doInBackground");
+            Log.i("Project", "filePath: "+host+filePath);
 
             try {
 
@@ -74,11 +79,11 @@ public class RetrieveSatelliteEphemerides {
                     Log.i("Project", "Negative completion"+Integer.toString(responseCode));
                     ftpClient.disconnect();
                 }
-                ftpClient.login("Username", "");
+                ftpClient.login("Anonymous", "");
                 ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
                 ftpClient.enterLocalPassiveMode();
 
-                /*Log.i("Project", Integer.toString(ftpClient.getReplyCode()));
+                Log.i("Project", Integer.toString(ftpClient.getReplyCode()));
 
 
                 boolean loginResult = ftpClient.login("", "");
@@ -88,32 +93,19 @@ public class RetrieveSatelliteEphemerides {
                 ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
                 ftpClient.retrieveFile(filePath, byteStream);
 
-                for(byte b : byteStream.toByteArray()){
-                    Log.i("Project", Byte.toString(b));
-                }*/
 
 
-                /*Log.i("Project", "Send request: "+requestUrl);
-                URL url = new URL(requestUrl);
-                URLConnection connection = url.openConnection();
-                InputStream fileStream = connection.getInputStream();
-                //Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
-
-                BufferedReader br = null;
-                if(connection.getHeaderField("Content-Encoding") != null && connection.getHeaderField("Content-Encoding").equals("gzip")){
-                    br = new BufferedReader(new InputStreamReader(new GZIPInputStream(fileStream)));
-                }else{
-                    br = new BufferedReader(new InputStreamReader(fileStream));
-                }
-
-
+                BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new ByteArrayInputStream(byteStream.toByteArray()))));
                 String response = "";
-                String line;
+                String line = "";
+
                 while((line = br.readLine()) != null){
                     response += line+"\n";
                 }
 
-                Log.i("Project", response);*/
+                //Log.i("Project", response);
+                RinexReader.parse(response);
+
 
                 ftpClient.logout();
                 ftpClient.disconnect();
