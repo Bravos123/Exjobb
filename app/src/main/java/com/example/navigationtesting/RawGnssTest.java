@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
@@ -25,20 +26,11 @@ import static android.location.GnssMeasurement.STATE_GLO_TOD_DECODED;
 import static android.location.GnssMeasurement.STATE_TOW_DECODED;
 import static android.location.GnssMeasurement.STATE_TOW_KNOWN;
 
-public class RawGnssTest extends AppCompatActivity {
+public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList<GalileoSatelliteData>>{
     private LocationManager locationManager;
-    private static final long LOCATION_RATE_NETWORK_MS = TimeUnit.SECONDS.toMillis(60L);
+    private ArrayList<GalileoSatelliteData> galileoSatellites;
 
-    private static final double NUMBER_NANO_SECONDS_100_MILLI = 100000000.0;
-    private static final double NUMBER_NANO_SECONDS_DAY = 86400000000000.0;
-    private static final double NUMBER_NANO_SECONDS_WEEK = 604800000000000.0;
-
-    private static final double NUMBER_NANO_SECONDS_14 = 14000000000.0;
-    private static final double NUMBER_NANO_SECONDS_THREE_HOURS = 10800000000000.0;
-
-    private static final int MAXTOWUNCNS = 50;//Max TOW Uncertanity
-
-    private static final double LIGHT_SPEED_VACUUM_METERS_PER_SECOND = 299792458.0;
+    private RetrieveSatelliteEphemerides ephemeridesRetriever;
 
 
     private LocationManager nmeaListener;
@@ -49,6 +41,8 @@ public class RawGnssTest extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_raw_gnss_test);
 
+        galileoSatellites = new ArrayList<>();
+
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         LocationListener locationListener = new GnssLocationListener();
@@ -56,11 +50,11 @@ public class RawGnssTest extends AppCompatActivity {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_RATE_NETWORK_MS, 0.0f, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Constants.LOCATION_RATE_NETWORK_MS, 0.0f, locationListener);
 
 
         //locationManager.registerGnssNavigationMessageCallback(gnssNavigationMessageListener);
-        //locationManager.registerGnssMeasurementsCallback(gnssMeasurementListener);
+        locationManager.registerGnssMeasurementsCallback(gnssMeasurementListener);
         //locationManager.registerGnssStatusCallback(gnssStatusListener);
 
 
@@ -72,7 +66,8 @@ public class RawGnssTest extends AppCompatActivity {
         //nmeaListener = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //nmeaListener.addNmeaListener(new NmeaMessagesListener());
 
-        new RetrieveSatelliteEphemerides();
+        ephemeridesRetriever = new RetrieveSatelliteEphemerides(this);
+        ephemeridesRetriever.retrieveEmepherides();
 
     }
 
@@ -108,8 +103,16 @@ public class RawGnssTest extends AppCompatActivity {
 
 
                         double pseudorange = calculatePseudorange(gnssM, event);
+                        //Log.i("Project", "galileoSatellites efter pseudorange: "+galileoSatellites.size());
+                        //galileoSatellites
+                        for(GalileoSatelliteData gl : galileoSatellites){
+                            Log.i("Project", "if "+gl.getSvid()+" == "+gnssM.getSvid());
+                            if(gl.getSvid().equals(gnssM.getSvid())){
+                                gl.setPseudorange(pseudorange);
+                            }
+                        }
                         if(pseudorange != 0){
-                            Log.i("Project", Integer.toString(gnssM.getSvid())+" pseudorange: "+Double.toString(pseudorange));
+                            //Log.i("Project", Integer.toString(gnssM.getSvid())+" pseudorange: "+Double.toString(pseudorange));
                         }
 
                     }
@@ -181,18 +184,18 @@ public class RawGnssTest extends AppCompatActivity {
 
 
                     //double weekNumberNanos = Math.floor((-1.0 * event.getClock().getFullBiasNanos()) / NUMBER_NANO_SECONDS_WEEK) * NUMBER_NANO_SECONDS_WEEK;
-                    double weekNumberNanos = (-1.0 * event.getClock().getFullBiasNanos()) % NUMBER_NANO_SECONDS_WEEK;
+                    double weekNumberNanos = (-1.0 * event.getClock().getFullBiasNanos()) % Constants.NUMBER_NANO_SECONDS_WEEK;
 
-                    double gpsPseudoRange = (tRxGPS - weekNumberNanos - gnssM.getReceivedSvTimeNanos()) / 1e9 * LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
+                    double gpsPseudoRange = (tRxGPS - weekNumberNanos - gnssM.getReceivedSvTimeNanos()) / 1e9 * Constants.LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
 
                     //Health check on gps
                     int measState = gnssM.getState();
                     boolean codeLock = (measState & STATE_CODE_LOCK) > 0;
                     boolean towDecoded = (measState & STATE_TOW_DECODED) > 0;
-                    boolean towUncertanity = gnssM.getReceivedSvTimeUncertaintyNanos() < MAXTOWUNCNS;
+                    boolean towUncertanity = gnssM.getReceivedSvTimeUncertaintyNanos() < Constants.MAXTOWUNCNS;
 
                     if(codeLock && towDecoded && towUncertanity && gpsPseudoRange < 1e9){
-                        Log.i("Project", "CONSTELLATION_GPS");
+                        //Log.i("Project", "CONSTELLATION_GPS");
                         pseudoRange = gpsPseudoRange;
                     }
                 }
@@ -223,13 +226,13 @@ public class RawGnssTest extends AppCompatActivity {
                 double tTxGalileo = gnssM.getReceivedSvTimeNanos() + gnssM.getTimeOffsetNanos();
 
                 if(((gnssM.getState() & STATE_TOW_DECODED) > 0) || ((gnssM.getState() & STATE_TOW_KNOWN) > 0)){
-                    double tRxGalileoTOW = TrxGnss % NUMBER_NANO_SECONDS_WEEK;
-                    Log.i("Project", "CONSTELLATION_GALILEO");
-                    pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
+                    double tRxGalileoTOW = TrxGnss % Constants.NUMBER_NANO_SECONDS_WEEK;
+                    //Log.i("Project", "CONSTELLATION_GALILEO");
+                    pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * Constants.LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
                 }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
-                    double tRxGalileoE1_2nd = galileoTime % NUMBER_NANO_SECONDS_100_MILLI;
-                    Log.i("Project", "CONSTELLATION_GALILEO");
-                    pseudoRange = ((galileoTime - tTxGalileo) % NUMBER_NANO_SECONDS_100_MILLI) * 1e-9 *LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
+                    double tRxGalileoE1_2nd = galileoTime % Constants.NUMBER_NANO_SECONDS_100_MILLI;
+                    //Log.i("Project", "CONSTELLATION_GALILEO");
+                    pseudoRange = ((galileoTime - tTxGalileo) % Constants.NUMBER_NANO_SECONDS_100_MILLI) * 1e-9 * Constants.LIGHT_SPEED_VACUUM_METERS_PER_SECOND;
                 }
 
 
@@ -246,5 +249,28 @@ public class RawGnssTest extends AppCompatActivity {
         //return (measurementTime - gnssM.getReceivedSvTimeNanos()) * (LIGHT_SPEED_VACUUM_METERS_PER_SECOND * 0.000000001/*Convert m/s to m/ns*/);
         //return ((measurementTime - gnssM.getReceivedSvTimeNanos())/1000000000.0) * (LIGHT_SPEED_VACUUM_METERS_PER_SECOND);
         return pseudoRange;
+    }
+
+    @Override
+    public void callBack(String name, ArrayList<GalileoSatelliteData> updatedSatellies) {
+        Log.i("Project", "updatedSatellies.size: "+updatedSatellies.size());
+        //Check if satellites number already has been added
+        for(GalileoSatelliteData glUpdated : updatedSatellies){
+
+            boolean satelliteWasUpdated = false;
+            for(int i=0; i<galileoSatellites.size(); i++){
+                if(galileoSatellites.get(i).getSatelliteSystem().equals(glUpdated.getSatelliteSystem())){
+                    galileoSatellites.set(i, glUpdated);
+                    satelliteWasUpdated = true;
+                    break;
+                }
+            }
+
+            if(!satelliteWasUpdated){
+                //satellite system has not been added, add it
+                galileoSatellites.add(glUpdated);
+            }
+
+        }
     }
 }

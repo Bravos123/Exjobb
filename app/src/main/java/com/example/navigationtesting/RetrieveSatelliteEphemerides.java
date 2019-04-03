@@ -24,12 +24,14 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import org.apache.commons.net.ftp.FTPClient;
 
 
 public class RetrieveSatelliteEphemerides {
+    ArrayList<GalileoSatelliteData> galileoSatellites;
     /*
     * Retrieves the RINEX Data of satellites
     * */
@@ -37,8 +39,15 @@ public class RetrieveSatelliteEphemerides {
     final String host = "igs.bkg.bund.de";//"ftp://igs.bkg.bund.de";
     static final String IGS_GALILEO_RINEX = "/IGS/BRDC/${yyyy}/${ddd}/BRDC00WRD_R_${yyyy}${ddd}0000_01D_EN.rnx.gz";
 
+    private Callback callback;
 
-    public RetrieveSatelliteEphemerides(){
+    public RetrieveSatelliteEphemerides(Callback callback){
+        this.callback = (Callback) callback;
+    }
+
+    public void retrieveEmepherides(){
+        this.galileoSatellites = galileoSatellites;
+
         String substitutedStirng = IGS_GALILEO_RINEX;
 
         int yearNumber = Calendar.getInstance().get(Calendar.YEAR);
@@ -54,8 +63,6 @@ public class RetrieveSatelliteEphemerides {
         Log.i("Project", "substitutedStirng: "+substitutedStirng);
         new downloadHandler(substitutedStirng).execute();
     }
-    //ftp://igs.bkg.bund.de/IGS/BRDC/2019/091/BRDC00WRD_R_20190910000_01D_EN.rnx.gz
-    //ftp://igs.bkg.bund.de/IGS/BRDC/2019/091/BRDC00WRD_R_20190910000_01D_EN.rnx.gz
 
 
     class downloadHandler extends AsyncTask<Void, Void, Void> {
@@ -103,12 +110,16 @@ public class RetrieveSatelliteEphemerides {
                     response += line+"\n";
                 }
 
-                //Log.i("Project", response);
-                RinexReader.parse(response);
-
-
                 ftpClient.logout();
                 ftpClient.disconnect();
+
+
+                ArrayList<GalileoSatelliteData> galileoSatellites = RinexReader.parse(response);
+                if(galileoSatellites == null){
+                    Log.i("Project", "GalileoSatellites are NLL");
+                }else{
+                    callback.callBack("Galileo satellites", galileoSatellites);
+                }
 
 
             } catch (MalformedURLException e) {

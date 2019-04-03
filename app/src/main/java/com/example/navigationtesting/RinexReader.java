@@ -2,10 +2,13 @@ package com.example.navigationtesting;
 
 import android.util.Log;
 
+import java.util.ArrayList;
+
 public class RinexReader {
 
 
-    static final void parse(String rinexData){
+    static final ArrayList<GalileoSatelliteData> parse(String rinexData){
+        ArrayList<GalileoSatelliteData> galileoSatellites = new ArrayList<>();
         String[] lines = rinexData.split("\\n");
 
 
@@ -32,7 +35,7 @@ public class RinexReader {
             }else if(endOfHeader){
                 if(l.substring(0, 1).equals("E")){//Finish already started buffer and start a new one
                     if(rinexDataBuffer != ""){
-                        createNewGalileoSatalliteData(rinexDataBuffer);
+                        galileoSatellites.add(createNewGalileoSatalliteData(rinexDataBuffer));
                     }
                     rinexDataBuffer = l+"\n";
                 }else{
@@ -43,22 +46,24 @@ public class RinexReader {
                 if(lineNumber == 0){
                     if(l.indexOf("3.03") == -1){
                         Log.i("Project", "Rinex verion is wrong, must be 3.03");
-                        return;
+                        return null;
                     }
                 }
             }
             lineNumber++;
         }
         //use last used buffer
-        createNewGalileoSatalliteData(rinexDataBuffer);
+        galileoSatellites.add(createNewGalileoSatalliteData(rinexDataBuffer));
 
 
 
+        return galileoSatellites;
     }
 
 
-    static final private void createNewGalileoSatalliteData(String rinexData){
+    static final private GalileoSatelliteData createNewGalileoSatalliteData(String rinexData){
         GalileoSatelliteData galileoSatellite = new GalileoSatelliteData(rinexData);
+        return galileoSatellite;
     }
 
 
