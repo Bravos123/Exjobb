@@ -35,7 +35,7 @@ public class RinexReader {
             }else if(endOfHeader){
                 if(l.substring(0, 1).equals("E")){//Finish already started buffer and start a new one
                     if(rinexDataBuffer != ""){
-                        galileoSatellites.add(createNewGalileoSatalliteData(rinexDataBuffer));
+                        insertSatelliteData(galileoSatellites, createNewGalileoSatalliteData(rinexDataBuffer));
                     }
                     rinexDataBuffer = l+"\n";
                 }else{
@@ -53,13 +53,32 @@ public class RinexReader {
             lineNumber++;
         }
         //use last used buffer
-        galileoSatellites.add(createNewGalileoSatalliteData(rinexDataBuffer));
+        insertSatelliteData(galileoSatellites, createNewGalileoSatalliteData(rinexDataBuffer));
 
 
 
         return galileoSatellites;
     }
 
+
+
+    private static final void insertSatelliteData(ArrayList<GalileoSatelliteData> galileoSatellites, GalileoSatelliteData newSatelliteData){
+        boolean satelliteWasUpdated = false;
+        for(int i=0; i<galileoSatellites.size(); i++){
+            if(galileoSatellites.get(i).getSvid() == newSatelliteData.getSvid()){
+                galileoSatellites.set(i, newSatelliteData);
+                satelliteWasUpdated = true;
+                break;
+            }
+        }
+
+        if(!satelliteWasUpdated){
+            //satellite system has not been added, add it
+            galileoSatellites.add(newSatelliteData);
+        }
+
+
+    }
 
     static final private GalileoSatelliteData createNewGalileoSatalliteData(String rinexData){
         GalileoSatelliteData galileoSatellite = new GalileoSatelliteData(rinexData);
