@@ -23,6 +23,7 @@ import android.widget.TextView;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 import static android.location.GnssMeasurement.STATE_CODE_LOCK;
@@ -116,20 +117,20 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
                         //Log.i("Project", );
 
 
-
+                        gnssM.getConstellationType();
                         double pseudorange = calculatePseudorange(gnssM, event);
 
+                        //Log.i("Project", "pseudorange: "+pseudorange);
 
-
-                        if(pseudorange != 0){
+                        //if(pseudorange > 0){
                             for(GalileoSatelliteData gl : galileoSatellites){
                                 if(gl.getSvid() == gnssM.getSvid()){
-                                    Log.i("Project", "Match: "+gl.getSvid());
+                                    //Log.i("Project", "Match: "+gl.getSvid());
                                     gl.setClock(event.getClock());
                                     gl.setPseudorange(pseudorange);
                                 }
                             }
-                        }
+                        //}
 
                     }
 
@@ -194,8 +195,8 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
 
         switch(contellationType){
             case CONSTELLATION_GPS:{
-                /*if((gnssM.getState() & STATE_TOW_DECODED) > 0){
-                    double gpsTime = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
+                if((gnssM.getState() & STATE_TOW_DECODED) > 0){
+                    /*double gpsTime = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
                     double tRxGPS = gpsTime + gnssM.getTimeOffsetNanos();
 
 
@@ -213,8 +214,8 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
                     if(codeLock && towDecoded && towUncertanity && gpsPseudoRange < 1e9){
                         //Log.i("Project", "CONSTELLATION_GPS");
                         pseudoRange = gpsPseudoRange;
-                    }
-                }*/
+                    }*/
+                }
             }
             case 2:{//CONSTELLATION_SBAS
 
@@ -241,14 +242,19 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
                 double galileoTime = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
                 double tTxGalileo = gnssM.getReceivedSvTimeNanos() + gnssM.getTimeOffsetNanos();
 
+
                 if(((gnssM.getState() & STATE_TOW_DECODED) > 0) || ((gnssM.getState() & STATE_TOW_KNOWN) > 0)){
                     double tRxGalileoTOW = TrxGnss % Constants.NUMBER_NANO_SECONDS_PER_WEEK;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
-                    pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * Constants.SPEED_OF_LIGHT;
+                    pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
+                    if(pseudoRange >= 4000000){/*Sometimes unrealistically large pseudoranges area created here*/
+                        //Log.i("Project", "Pseudorange problem GALILEO Constellation STATE_TOW_DECODED");
+                    }
                 }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
                     double tRxGalileoE1_2nd = galileoTime % Constants.NumberNanoSeconds100Milli;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
-                    pseudoRange = ((galileoTime - tTxGalileo) % Constants.NumberNanoSeconds100Milli) * 1e-9 * Constants.SPEED_OF_LIGHT;
+                    pseudoRange = ((galileoTime - tTxGalileo) % Constants.NumberNanoSeconds100Milli) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
+
                 }
 
 
@@ -259,6 +265,10 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
             }
         }
 
+        //Bad fix to a problem
+        /*if(pseudoRange >= 4000000){
+            pseudoRange = 0;
+        }*/
 
 
         return pseudoRange;
@@ -268,9 +278,9 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
     public void callBack(String name, ArrayList<GalileoSatelliteData> updatedSatellies) {
         Log.i("Project", "updatedSatellies.size: "+updatedSatellies.size()+"-------------------------------------");
 
-        for(int i=0; i<updatedSatellies.size(); i++){
+        /*for(int i=0; i<updatedSatellies.size(); i++){
             Log.i("Project", "svid: "+updatedSatellies.get(i).getSvid());
-        }
+        }*/
         //Check if satellites number already has been added
         for(GalileoSatelliteData glUpdated : updatedSatellies){
 
@@ -306,8 +316,16 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
             public void run(){
                 layoutSatellites.removeAllViews();
 
+                galileoSatellites.sort(new Comparator<GalileoSatelliteData>() {
+                    @Override
+                    public int compare(GalileoSatelliteData o1, GalileoSatelliteData o2) {
+                        return o1.getSvid() - o2.getSvid();
+                    }
+                });
+
+
                 for(GalileoSatelliteData g : galileoSatellites){
-                    if(g.getPseudorange() != 0){
+                    if(g.getPseudorange() > 0){
                         TextView newSatId = new TextView(RawGnssTest.this);
                         newSatId.setText("svid: "+Integer.toString(g.getSvid()));
                         layoutSatellites.addView(newSatId);

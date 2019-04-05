@@ -35,17 +35,17 @@ public class GalileoEphemerides {
     //BROADCAST ORBIT - 3
     private double toe;
     private double cic;
-    private double omega0_radians;/* Longitude of ascending node of orbit plane at beginning of week */
+    private double omega0_radians;/*Longitude of ascending node at the beginning of the week*/
     private double cis;
 
     //BROADCAST ORBIT - 4
-    private double i0_radians;
+    private double i0_radians; /*Inclination at reference epoch*/
     private double crc;
     private double omega_radians;/* Argument of perigee */
     private double omegaDot;/* Rate of right ascension */
 
     //BROADCAST ORBIT - 5
-    private double idot;
+    private double idot;/* Rate of inclination angle */
     private double dataSources;
     private double galWeekNumber;
     private double spare;
