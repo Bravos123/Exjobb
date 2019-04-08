@@ -79,7 +79,7 @@ public class RetrieveSatelliteEphemerides {
             try {
 
                 FTPClient ftpClient = new FTPClient();
-                ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out)));
+                //ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out)));
                 ftpClient.connect(host, 21);
                 int responseCode = ftpClient.getReplyCode();
                 if(!FTPReply.isPositiveCompletion(responseCode)){

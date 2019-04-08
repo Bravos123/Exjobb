@@ -12,7 +12,7 @@ public class CalculateSatellitePosition {
     private static final double F_OF = -4.442807633e-10;//obliquity factor  I THINKG
     private static final double w_earthsAngularVelocity = 7292115.0e-11;
 
-    public static final String getGalileoSatellitePosition(double satelliteTime, double pseudorange, GalileoEphemerides eph){
+    public static final SatellitePositionData getGalileoSatellitePosition(double satelliteTime, double pseudorange, GalileoEphemerides eph){
 
 
 
@@ -94,17 +94,12 @@ public class CalculateSatellitePosition {
         Float3 coordinates = multiplyMatrix3Vector3(matrixResults, vecResult);
 
 
-        Float3 ellipsoidalCoords = convertCartesianToEllipsoidlaCoordinates(coordinates);
-        String returnValue = "Eccentric anomaly: "+Double.toString(Ek)+
-                "\nTrue anomaly: "+Vk+
-                "\nCoordinates: "+
-                "longitude: "+Float.toString(ellipsoidalCoords.x)+
-                "\nlatitude: "+Float.toString(ellipsoidalCoords.y)+
-                "\n\n";
 
-        //Log.i("Project", returnValue);
+        Float3 ellipsoidalCoords = convertCartesianToEllipsoidalCoordinates(coordinates);
 
-        return returnValue;
+        SatellitePositionData newPData = new SatellitePositionData(satelliteTime, pseudorange, Tk, Ek, Vk, Uk, Rk, Ik, lambdaK, coordinates, ellipsoidalCoords);
+
+        return newPData;
     }
 
 
@@ -223,7 +218,7 @@ public class CalculateSatellitePosition {
         R1_0.set(1, 1, (float) Math.cos(rot));
         R1_0.set(2, 1, (float) Math.sin(rot));
 
-        R1_0.set(0, 2, 1);
+        R1_0.set(0, 2, 0);
         R1_0.set(1, 2, (float) -Math.sin(rot));
         R1_0.set(2, 2, (float) Math.cos(rot));
 
@@ -258,7 +253,7 @@ public class CalculateSatellitePosition {
         for(int i=0; i<3; i++){
             x += (mat3.get(0, 0) * vec3.x) + (mat3.get(1, 0) * vec3.y) + (mat3.get(2, 0) * vec3.z);
             y += (mat3.get(0, 1) * vec3.x) + (mat3.get(1, 1) * vec3.y) + (mat3.get(2, 1) * vec3.z);
-            x += (mat3.get(0, 2) * vec3.x) + (mat3.get(1, 2) * vec3.y) + (mat3.get(2, 2) * vec3.z);
+            z += (mat3.get(0, 2) * vec3.x) + (mat3.get(1, 2) * vec3.y) + (mat3.get(2, 2) * vec3.z);
         }
 
         newVec.x = x;
@@ -269,8 +264,52 @@ public class CalculateSatellitePosition {
     }
 
 
-    private static final Float3 convertCartesianToEllipsoidlaCoordinates(Float3 cartesian){
-        double longitude = Math.atan(cartesian.y/cartesian.x);
+    private static final Float3 convertCartesianToEllipsoidalCoordinates(Float3 cartesian){
+        double latitude = Math.atan2(cartesian.z, Math.sqrt(Math.pow(cartesian.x, 2) + Math.pow(cartesian.y, 2)));
+        double longitude = Math.atan2(cartesian.y, cartesian.x);
+
+        Float3 ellipsoidalCoords = new Float3();
+        ellipsoidalCoords.x = (float)(latitude*(180/Math.PI));
+        ellipsoidalCoords.y = (float)(longitude*(180/Math.PI));
+
+        return ellipsoidalCoords;
+
+        /*double X = cartesian.x;
+        double Y = cartesian.y;
+        double Z = cartesian.z;
+
+        //this.geod = new SimpleMatrix(3, 1);
+
+        double a = Constants.WGS84_SEMI_MAJOR_AXIS;
+        double e = Constants.WGS84_ECCENTRICITY;
+
+        // Radius computation
+        double r = Math.sqrt(Math.pow(X, 2) + Math.pow(Y, 2) + Math.pow(Z, 2));
+
+        // Geocentric longitude
+        double lamGeoc = Math.atan2(Y, X);
+
+        // Geocentric latitude
+        double phiGeoc = Math.atan(Z / Math.sqrt(Math.pow(X, 2) + Math.pow(Y, 2)));
+
+        // Computation of geodetic coordinates
+        double psi = Math.atan(Math.tan(phiGeoc) / Math.sqrt(1 - Math.pow(e, 2)));
+        double phiGeod = Math.atan((r * Math.sin(phiGeoc) + Math.pow(e, 2) * a
+                / Math.sqrt(1 - Math.pow(e, 2)) * Math.pow(Math.sin(psi), 3))
+                / (r * Math.cos(phiGeoc) - Math.pow(e, 2) * a * Math.pow(Math.cos(psi), 3)));
+        double lamGeod = lamGeoc;
+        double N = a / Math.sqrt(1 - Math.pow(e, 2) * Math.pow(Math.sin(phiGeod), 2));
+        double h = r * Math.cos(phiGeoc) / Math.cos(phiGeod) - N;
+
+
+        Float3 ellipsoidalCoords = new Float3();
+        ellipsoidalCoords.x = (float)Math.toDegrees(lamGeod);
+        ellipsoidalCoords.y = (float)Math.toDegrees(phiGeod);
+        ellipsoidalCoords.x = (float)h;
+
+        return ellipsoidalCoords;*/
+
+        /*double longitude = Math.atan(cartesian.y/cartesian.x);
         double p = Math.sqrt(Math.pow(cartesian.x, 2) + Math.pow(cartesian.y, 2));
 
         //TODO: Implement improved latitude by iterating some other equation:  https://gssc.esa.int/navipedia/index.php/Ellipsoidal_and_Cartesian_Coordinates_Conversion (From Cartesian to Ellipsoidal coordinates)
@@ -297,6 +336,6 @@ public class CalculateSatellitePosition {
         Float3 ellipsoidalCoords = new Float3();
         ellipsoidalCoords.x = (float)longitude;
         ellipsoidalCoords.y = (float)latitude;
-        return ellipsoidalCoords;
+        return ellipsoidalCoords;*/
     }
 }

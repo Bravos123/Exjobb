@@ -15,6 +15,8 @@ public class GalileoSatelliteData {
     private GnssClock internalClock;
     private double satelliteTime = -1;
 
+    private SatellitePositionData myPositionData;
+
     public GalileoSatelliteData(String data){//Data is single data entry from RINEX file.
         eph = new GalileoEphemerides(data);
     }
@@ -62,11 +64,12 @@ public class GalileoSatelliteData {
         return satelliteTime;
     }
 
-    public String getPosition(){
-        if(pseudorange != -1 && satelliteTime != -1){
-            return CalculateSatellitePosition.getGalileoSatellitePosition(satelliteTime, pseudorange, eph);
-        }
 
-        return "NO KNOWN POSITION";
+    public void calculateNewPositionData(){
+        myPositionData = CalculateSatellitePosition.getGalileoSatellitePosition(satelliteTime, pseudorange, eph);
+    }
+
+    public SatellitePositionData getPosition(){
+        return myPositionData;
     }
 }
