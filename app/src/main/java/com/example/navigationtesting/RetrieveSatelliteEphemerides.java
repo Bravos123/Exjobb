@@ -4,6 +4,8 @@ import android.icu.util.Calendar;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.example.navigationtesting.SatelliteMVC.Satellite;
+
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPReply;
@@ -31,12 +33,20 @@ import org.apache.commons.net.ftp.FTPClient;
 
 
 public class RetrieveSatelliteEphemerides {
-    ArrayList<GalileoSatelliteData> galileoSatellites;
+
+
+
+    private boolean loading = false;
     /*
     * Retrieves the RINEX Data of satellites
     * */
     //Url templete of where the satellite ephemerides should be downloaded
     final String host = "igs.bkg.bund.de";//"ftp://igs.bkg.bund.de";
+    /*
+    * RINEX File name description:
+    * file:///home/elias/H%C3%A4mtningar/rinex303%20(6).pdf
+    * A 1 RINEX File name description
+    * */
     static final String IGS_GALILEO_RINEX = "/IGS/BRDC/${yyyy}/${ddd}/BRDC00WRD_R_${yyyy}${ddd}0000_01D_EN.rnx.gz";
 
     private Callback callback;
@@ -46,22 +56,23 @@ public class RetrieveSatelliteEphemerides {
     }
 
     public void retrieveEmepherides(){
-        this.galileoSatellites = galileoSatellites;
+        if(!loading){
+            loading = true;
+            String substitutedStirng = IGS_GALILEO_RINEX;
 
-        String substitutedStirng = IGS_GALILEO_RINEX;
+            int yearNumber = Calendar.getInstance().get(Calendar.YEAR);
+            int dayNumber = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
+            String dayNumberString = Integer.toString(dayNumber);
+            if(dayNumber < 100){
+                dayNumberString = "0"+dayNumberString;
+            }
 
-        int yearNumber = Calendar.getInstance().get(Calendar.YEAR);
-        int dayNumber = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
-        String dayNumberString = Integer.toString(dayNumber);
-        if(dayNumber < 100){
-            dayNumberString = "0"+dayNumberString;
+            substitutedStirng = substitutedStirng.replaceAll("\\$\\{yyyy\\}", Integer.toString(yearNumber));
+            substitutedStirng = substitutedStirng.replaceAll("\\$\\{ddd\\}", dayNumberString);
+
+            Log.i("Project", "substitutedStirng: "+substitutedStirng);
+            new downloadHandler(substitutedStirng).execute();
         }
-
-        substitutedStirng = substitutedStirng.replaceAll("\\$\\{yyyy\\}", Integer.toString(yearNumber));
-        substitutedStirng = substitutedStirng.replaceAll("\\$\\{ddd\\}", dayNumberString);
-
-        Log.i("Project", "substitutedStirng: "+substitutedStirng);
-        new downloadHandler(substitutedStirng).execute();
     }
 
 
@@ -72,6 +83,17 @@ public class RetrieveSatelliteEphemerides {
             filePath = url;
         }
 
+
+        private void parseData(String data, String dateLastModified){
+            ArrayList<Satellite> satellites = RinexReader.parse(data);
+            if(satellites == null){
+                Log.i("Project", "satellites are NLL");
+            }else{
+                callback.callBack(dateLastModified, satellites);
+            }
+
+            loading = false;
+        }
         @Override
         protected Void doInBackground(Void... voids) {
             Log.i("Project", "filePath: "+host+filePath);
@@ -79,7 +101,7 @@ public class RetrieveSatelliteEphemerides {
             try {
 
                 FTPClient ftpClient = new FTPClient();
-                //ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out)));
+                ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out)));
                 ftpClient.connect(host, 21);
                 int responseCode = ftpClient.getReplyCode();
                 if(!FTPReply.isPositiveCompletion(responseCode)){
@@ -90,7 +112,7 @@ public class RetrieveSatelliteEphemerides {
                 ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
                 ftpClient.enterLocalPassiveMode();
 
-                Log.i("Project", Integer.toString(ftpClient.getReplyCode()));
+                String lastModifiedTime = ftpClient.getModificationTime(filePath);
 
 
                 boolean loginResult = ftpClient.login("", "");
@@ -101,10 +123,9 @@ public class RetrieveSatelliteEphemerides {
                 ftpClient.retrieveFile(filePath, byteStream);
 
 
-
                 BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new ByteArrayInputStream(byteStream.toByteArray()))));
                 String response = "";
-                String line = "";
+                String line;
 
                 while((line = br.readLine()) != null){
                     response += line+"\n";
@@ -114,13 +135,8 @@ public class RetrieveSatelliteEphemerides {
                 ftpClient.disconnect();
 
 
-                ArrayList<GalileoSatelliteData> galileoSatellites = RinexReader.parse(response);
-                if(galileoSatellites == null){
-                    Log.i("Project", "GalileoSatellites are NLL");
-                }else{
-                    callback.callBack("Galileo satellites", galileoSatellites);
-                }
 
+                parseData(response, lastModifiedTime);
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();

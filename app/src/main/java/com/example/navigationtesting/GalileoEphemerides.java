@@ -15,7 +15,7 @@ public class GalileoEphemerides {
     private int day;
     private int hour;
     private int minute;
-    private int second;
+    private int secondsInTheDay;
     private double af0;
     private double af1;
     private double af2;
@@ -138,13 +138,13 @@ public class GalileoEphemerides {
         day = Integer.parseInt(svEpochSvClkPart.substring(12, 14));
         hour = Integer.parseInt(svEpochSvClkPart.substring(15, 17));
         minute = Integer.parseInt(svEpochSvClkPart.substring(18, 20));
-        second = Integer.parseInt(svEpochSvClkPart.substring(21, 23));
+        secondsInTheDay = Integer.parseInt(svEpochSvClkPart.substring(21, 23));
         af0 = dataParts.get(0);
         af1 = dataParts.get(1);
         af2 = dataParts.get(2);
 
         //BROADCAST ORBIT - 1
-        IODnavIssueOfDataOfNavBatch = dataParts.get(3);
+        IODnavIssueOfDataOfNavBatch = dataParts.get(3);// -> xIODE=a(11)
         crs = dataParts.get(4);
         deltaN = dataParts.get(5);/*Mean motion difference*/
         m0_radians = dataParts.get(6);
@@ -224,8 +224,8 @@ public class GalileoEphemerides {
         return minute;
     }
 
-    public int getSecond() {
-        return second;
+    public int getSecondsInTheDay() {
+        return secondsInTheDay;
     }
 
     public double getAf0() {

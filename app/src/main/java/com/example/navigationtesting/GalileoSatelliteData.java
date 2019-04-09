@@ -7,6 +7,9 @@ import android.util.Log;
 import java.util.ArrayList;
 
 public class GalileoSatelliteData {
+    private int epochYear;
+    private int epochDay;
+    private int epochSecInDay;
     private GalileoEphemerides eph;
 
 
@@ -21,8 +24,17 @@ public class GalileoSatelliteData {
         eph = new GalileoEphemerides(data);
     }
 
+    public void setEpochYear(int epochYear) {
+        this.epochYear = epochYear;
+    }
 
+    public void setEpochDay(int epochDay) {
+        this.epochDay = epochDay;
+    }
 
+    public void setEpochSecInDay(int epochSecInDay) {
+        this.epochSecInDay = epochSecInDay;
+    }
 
     public static ArrayList<Integer> getAllIndexMatches(String haystack, String needle){
         ArrayList<Integer> matches = new ArrayList<Integer>();
@@ -66,7 +78,7 @@ public class GalileoSatelliteData {
 
 
     public void calculateNewPositionData(){
-        myPositionData = CalculateSatellitePosition.getGalileoSatellitePosition(satelliteTime, pseudorange, eph);
+        myPositionData = CalculateSatellitePosition.getGalileoSatellitePosition(eph);
     }
 
     public SatellitePositionData getPosition(){

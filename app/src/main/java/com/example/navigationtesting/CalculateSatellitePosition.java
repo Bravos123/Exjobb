@@ -1,5 +1,6 @@
 package com.example.navigationtesting;
 
+import android.location.GnssClock;
 import android.renderscript.Float3;
 import android.renderscript.Matrix3f;
 import android.renderscript.Matrix4f;
@@ -11,8 +12,13 @@ import static com.example.navigationtesting.Constants.EARTH_GRAVITATIONAL_CONSTA
 public class CalculateSatellitePosition {
     private static final double F_OF = -4.442807633e-10;//obliquity factor  I THINKG
     private static final double w_earthsAngularVelocity = 7292115.0e-11;
+    //WGS-84 Earth Univ. Grav. parameter (m3/s2)
+    private static final double xmu = 3.986005e+14;
 
-    public static final SatellitePositionData getGalileoSatellitePosition(double satelliteTime, double pseudorange, GalileoEphemerides eph){
+    //WGS-84 Earth rotation rate (rad/s)
+    private static final double om_e = 7.2921151467e-5;
+
+    public static final SatellitePositionData getGalileoSatellitePosition(GalileoEphemerides eph){
 
 
 
@@ -41,150 +47,103 @@ public class CalculateSatellitePosition {
          *
          * */
 
+        //##########################################################################################
         /*Algorithm from https://gssc.esa.int/navipedia/GNSS_Book/ESA_GNSS-Book_TM-23_Vol_I.pdf
          * at 3.3.1*/
 
         /*Compute the time tk from the ephemerides reference epoch toe (t and
             toe are expressed in seconds in the GPS week):*/
-        double t = getGPSSystemTimeSeconds(satelliteTime, pseudorange, eph);
-        double Tk = t - eph.getToe();
-        Tk = checkGpsTime(Tk);
+        /*double t = satelliteTime;//getGPSSystemTimeSeconds(satelliteTime, pseudorange, eph);
+        double Tk = t - eph.getToe();*/
+        int idoy = eph.getEpochTimeOfClockGALYear();
+        double xy = (double)idoy;
+
+        //GPS day: (1980jan6.0 => JD=2444244.5 => id_GPS=1.0)
+        int id_GPS = (int)(365.25*(xy-1.0))+idoy-722835;
+
+        //Day of week:
+        int idw = id_GPS % 7;
+        //Number of GPS week:
+        int nw = (id_GPS-idw)/7;
+        //seconds in the week:
+        double sw = (double)(idw)*86400.0+eph.getSecondsInTheDay();
+
+        double tk = sw - eph.getToe();
+        tk = checkGpsTime(tk);
 
 
 
-        //eccentric anomaly Ek:
-        double Ek = getEccentricAnomaly(satelliteTime, eph);
+        /*True Anomaly fk*/
+        double xMo = eph.getM0_radians();
+        double a12 = eph.getSqrtSemiMajorAxisA();
+        double dn = eph.getDeltaN();
+        double e = eph.getE_Eccentricity();
 
-        //True anomaly Vk
-        double Vk = getTrueAnomaly(eph, Ek);
-        //Log.i("Project", "true anomaly:"+Vk);
+        double xMk = xMo + (Math.sqrt(xmu)/(Math.pow(a12, 3))+dn)*tk;
+        double Ek = sub_nSteffensen(xMk, e); //eccentric anomaly (rad)
+        double fk=Math.atan2(Math.sqrt(1.0-Math.pow(e,2))*Math.sin(Ek), Math.cos(Ek)-e);
 
-        /*Compute the argument of latitude uk from the argument of perigee
-        ω, true anomaly vk and corrections cuc and cus:*/
-        double Uk = eph.getOmega_radians() + Vk + eph.getCuc()*cos2(eph.getOmega_radians()+Vk) + eph.getCus()*sin2(eph.getOmega_radians()+Vk);
-
-        /*Compute the radial distance rk, considering corrections crc and crs:*/
-        double majorAxisA = eph.getSqrtSemiMajorAxisA() * eph.getSqrtSemiMajorAxisA();
-        double Rk = majorAxisA*(1 - eph.getE_Eccentricity()*Math.cos(Ek)) + eph.getCrc()*cos2(eph.getOmega_radians() + Vk) + eph.getCrs()*sin2(eph.getOmega_radians() + Vk);
-
-        /*Compute the inclination ik of the orbital plane from the inclination
-        io at reference time toe, and corrections cic and cis:*/
-        double Ik = eph.getI0_radians() + eph.getIdot()*Tk + eph.getCic()*cos2(eph.getOmega_radians() + Vk) + eph.getCis()*sin2(eph.getOmega_radians() + Vk);
+        /*Arg. of Latitude uk,radius rk, inclination ik:*/
+        double omgp = eph.getOmega_radians();
+        double uk = omgp + fk + eph.getCuc() * Math.cos((omgp + fk) * 2.0) + eph.getCus() * Math.sin((omgp + fk) * 2.0);
+        double rk=(Math.pow(a12, 2))*(1.0-e*Math.cos(Ek))+eph.getCrc()*Math.cos(2.0*(omgp+fk)) +  eph.getCrs()*Math.sin(2.0*(omgp+fk));
+        double xIk=eph.getI0_radians()+eph.getIdot()*tk+eph.getCic()*Math.cos(2.0*(omgp+fk)) + eph.getCis()*Math.sin(2.0*(omgp+fk));
 
 
-        /*Compute the longitude of the ascending node λk (with respect to
-        Greenwich). This calculation uses the right ascension at the beginning of the current week (Ωo), the correction from the apparent sidereal time variation in Greenwich between the beginning of the week
-        and reference time tk = t − toe, and the change in longitude of the
-        ascending node from the reference time toe:*/
-        double lambdaK = eph.getOmega0_radians() + (eph.getOmegaDot() - w_earthsAngularVelocity) * Tk - w_earthsAngularVelocity*eph.getToe();
+        /*positions in orbital plane*/
+        double xp = rk * Math.cos(uk);
+        double yp = rk * Math.sin(uk);
 
+        /*Longitude of ascending node xlmk:*/
+        double xlmk = eph.getOmega0_radians()+(eph.getOmegaDot()-om_e)*tk-om_e*eph.getToe();
 
-        /*Compute the coordinates in the TRS frame, applying three rotations
-        (around uk, ik and λk):*/
-
-        Float3 vecResult = new Float3();
-        vecResult.x = (float)Rk;
-        vecResult.y = 0.0f;
-        vecResult.z = 0.0f;
-
-        Matrix3f matrixResults = new Matrix3f();
-        matrixResults.loadMultiply(createRotationMatrixR3(-lambdaK), createRotationMatrixR1(-Ik));
-        matrixResults.loadMultiply(matrixResults, createRotationMatrixR3(-Uk));
-
-        Float3 coordinates = multiplyMatrix3Vector3(matrixResults, vecResult);
+        /*CT-System coordinates*/
+        double x=xp*Math.cos(xlmk)-yp*Math.cos(xIk)*Math.sin(xlmk);
+        double y=xp*Math.sin(xlmk)+yp*Math.cos(xIk)*Math.cos(xlmk);
+        double z=yp*Math.sin(xIk);
 
 
 
-        Float3 ellipsoidalCoords = convertCartesianToEllipsoidalCoordinates(coordinates);
 
-        SatellitePositionData newPData = new SatellitePositionData(satelliteTime, pseudorange, Tk, Ek, Vk, Uk, Rk, Ik, lambdaK, coordinates, ellipsoidalCoords);
+        double[] coordsCartesian = new double[]{x, y, z};
+        double[] coordsEllipsoidal = convertCartesianToEllipsoidalCoordinates(coordsCartesian);
 
+
+        SatellitePositionData newPData = new SatellitePositionData(coordsCartesian, coordsEllipsoidal);
         return newPData;
     }
 
 
-    private static final double getGPSSystemTimeSeconds(double satelliteTime, double pseudorange, GalileoEphemerides eph){
-        double Tsv = satelliteTime - (pseudorange / Constants.SPEED_OF_LIGHT);
 
-        //TODO: TEST IF THIS WORKS with return Tsv-deltaTsvL1;
-        double Tr = F_OF * eph.getE_Eccentricity() * eph.getSqrtSemiMajorAxisA() * Math.sin(getEccentricAnomaly(satelliteTime, eph));
-        double Tgd = eph.getBgd_E5a_E1_seconds();
-        double deltaTsvL1 = eph.getAf0() + eph.getAf1()*(satelliteTime - eph.getToc()) + eph.getAf2()*Math.pow(satelliteTime - eph.getToc(), 2) + Tr - Tgd;
+    private static final double sub_nSteffensen(double xm, double e){
+        /*Method for accelerating the convergence of the Method
+        of Newton-Rapson.
+        Equations of this kind p=g(p)   (==> E=M+e*sin(E))
+        The method requires that g'(p)<>1  (==> p single root)*/
 
+        double tol = 1.0e-15;
+        xm = Math.atan2(Math.sin(xm), Math.cos(xm));
+        double p = xm;
 
-
-        return Tsv-deltaTsvL1;
-        //return Tsv;
-    }
-
-
-    private static final double getEccentricAnomaly(double satelliteTime, GalileoEphemerides eph){
-        /*
-         * Got help from:
-         * https://github.com/TheGalfins/GNSS_Compare/blob/master/GNSS_Compare/GoGpsExtracts/src/main/java/com/galfins/gogpsextracts/EphemerisSystemGps.java
-         * */
-
-
-        //Semi-major axis
-        double A = eph.getSqrtSemiMajorAxisA() * eph.getSqrtSemiMajorAxisA();
-
-        //Time from the ephemerides reference epoch
-        double tk = checkGpsTime(satelliteTime - eph.getToe());
-
-        //Computed mean motion [rad/sec]
-        double n0 = Math.sqrt(Constants.EARTH_GRAVITATIONAL_CONSTANT / Math.pow(A, 3));
-
-        //Corrected mean motion [rad/sec]
-        double n = n0 + eph.getDeltaN();
-
-        //Mean anomaly
-        double Mk = eph.getM0_radians() + n * tk;
-
-        //Eccentric anomaly starting value
-        Mk = Math.IEEEremainder(Mk + 2 * Math.PI, 2 * Math.PI);
-        double Ek = Mk;
-
-        int i;
-        double EkOld, dEk;
-
-        // Eccentric anomaly iterative computation
-        int maxNumIter = 14;
-        for (i = 0; i < maxNumIter; i++) {
-            EkOld = Ek;
-            Ek = Mk + eph.getE_Eccentricity() * Math.sin(Ek);
-            dEk = Math.IEEEremainder(Ek - EkOld, 2 * Math.PI);
-            if (Math.abs(dEk) < 1e-12)
+        while(true){
+            double p0 = p;
+            double p1 = xm + e * Math.sin(p0);
+            double p2 = xm + e * Math.sin(p1);
+            double dd = Math.abs(p2-2.0*p1+p0);
+            if(dd < tol){
                 break;
+            }
+            p = p0-Math.pow(p1-p0, 2)/(p2-2.0*p1+p0);
+            if(Math.abs(p-p0) < tol){
+                break;
+            }
         }
 
-        // TODO Display/log warning message
-        if (i == maxNumIter)
-            System.out.println("Warning: Eccentric anomaly does not converge.");
+        return p;
 
-
-        /*Log.i("Project", "Eccentric anomaly results-------------------------------:");
-        Log.i("Project", "eph.getE_Eccentricity():"+eph.getE_Eccentricity());
-        Log.i("Project", "Mk:"+Mk);
-        Log.i("Project", "E:"+Ek);*/
-
-        return Ek;
     }
 
 
-    public static final double getTrueAnomaly(GalileoEphemerides eph, double eccentricAnomaly){
-        /*
-         * Implemented from:
-         * http://www.jgiesen.de/kepler/kepler.html
-         * */
-        double dp = 14;
-        double K = Math.PI / 180;
-        double S = Math.sin(eccentricAnomaly);
-        double C = Math.cos(eccentricAnomaly);
-        double fak = Math.sqrt(1.0-(eph.getE_Eccentricity()*eph.getE_Eccentricity()));
-        double phi = Math.atan2(fak*S, C-eph.getE_Eccentricity())/K;
-
-        return Math.round(phi*Math.pow(10, dp))/Math.pow(10, dp) * (Math.PI/180)/*Convert true anomaly from degrees to radians*/;
-    }
 
 
     private static final double checkGpsTime(double time) {
@@ -225,117 +184,67 @@ public class CalculateSatellitePosition {
         return R1_0;
     }
 
-    private static final Matrix3f createRotationMatrixR3(double rot){
-        Matrix3f R3_0 = new Matrix3f();
-        R3_0.set(0, 0, (float)Math.cos(rot));
-        R3_0.set(1, 0, (float)Math.sin(rot));
-        R3_0.set(2, 0, 0);
-
-        R3_0.set(0, 1, (float)-Math.sin(rot));
-        R3_0.set(1, 1, (float)Math.cos(rot));
-        R3_0.set(2, 1, 0);
-
-        R3_0.set(0, 2, 0);
-        R3_0.set(1, 2, 0);
-        R3_0.set(2, 2, 1);
-
-        return R3_0;
-    }
 
 
-    private static final Float3 multiplyMatrix3Vector3(Matrix3f mat3, Float3 vec3){
-        Float3 newVec = new Float3();
+    private static final double[] convertCartesianToEllipsoidalCoordinates(double[] coordsCartesian){
+        /*implemented from car2geo.f in PROG/src/F77_src from gLab CD:
+        * https://gssc.esa.int/navipedia/index.php/GNSS:Tools*/
 
-        float x = 0;
-        float y = 0;
-        float z = 0;
+        /*Value declaration*/
+        double tol = 1.0e-11;
+        //WGS84 parameters (in meters): https://gssc.esa.int/navipedia/index.php/Reference_Frames_in_GNSS
+        double a = 6378137.0;
+        double f = 1.0/298.257223563;
+        double b = a*(1.0-f);
+        double e2=(Math.pow(a, 2)-Math.pow(b, 2))/Math.pow(a, 2);
 
-        for(int i=0; i<3; i++){
-            x += (mat3.get(0, 0) * vec3.x) + (mat3.get(1, 0) * vec3.y) + (mat3.get(2, 0) * vec3.z);
-            y += (mat3.get(0, 1) * vec3.x) + (mat3.get(1, 1) * vec3.y) + (mat3.get(2, 1) * vec3.z);
-            z += (mat3.get(0, 2) * vec3.x) + (mat3.get(1, 2) * vec3.y) + (mat3.get(2, 2) * vec3.z);
-        }
+        int iunits = 0;//Input is in meters
 
-        newVec.x = x;
-        newVec.y = y;
-        newVec.z = z;
-
-        return newVec;
-    }
+        double x = coordsCartesian[0];
+        double y = coordsCartesian[1];
+        double z = coordsCartesian[2];
 
 
-    private static final Float3 convertCartesianToEllipsoidalCoordinates(Float3 cartesian){
-        double latitude = Math.atan2(cartesian.z, Math.sqrt(Math.pow(cartesian.x, 2) + Math.pow(cartesian.y, 2)));
-        double longitude = Math.atan2(cartesian.y, cartesian.x);
-
-        Float3 ellipsoidalCoords = new Float3();
-        ellipsoidalCoords.x = (float)(latitude*(180/Math.PI));
-        ellipsoidalCoords.y = (float)(longitude*(180/Math.PI));
-
-        return ellipsoidalCoords;
-
-        /*double X = cartesian.x;
-        double Y = cartesian.y;
-        double Z = cartesian.z;
-
-        //this.geod = new SimpleMatrix(3, 1);
-
-        double a = Constants.WGS84_SEMI_MAJOR_AXIS;
-        double e = Constants.WGS84_ECCENTRICITY;
-
-        // Radius computation
-        double r = Math.sqrt(Math.pow(X, 2) + Math.pow(Y, 2) + Math.pow(Z, 2));
-
-        // Geocentric longitude
-        double lamGeoc = Math.atan2(Y, X);
-
-        // Geocentric latitude
-        double phiGeoc = Math.atan(Z / Math.sqrt(Math.pow(X, 2) + Math.pow(Y, 2)));
-
-        // Computation of geodetic coordinates
-        double psi = Math.atan(Math.tan(phiGeoc) / Math.sqrt(1 - Math.pow(e, 2)));
-        double phiGeod = Math.atan((r * Math.sin(phiGeoc) + Math.pow(e, 2) * a
-                / Math.sqrt(1 - Math.pow(e, 2)) * Math.pow(Math.sin(psi), 3))
-                / (r * Math.cos(phiGeoc) - Math.pow(e, 2) * a * Math.pow(Math.cos(psi), 3)));
-        double lamGeod = lamGeoc;
-        double N = a / Math.sqrt(1 - Math.pow(e, 2) * Math.pow(Math.sin(phiGeod), 2));
-        double h = r * Math.cos(phiGeoc) / Math.cos(phiGeod) - N;
-
-
-        Float3 ellipsoidalCoords = new Float3();
-        ellipsoidalCoords.x = (float)Math.toDegrees(lamGeod);
-        ellipsoidalCoords.y = (float)Math.toDegrees(phiGeod);
-        ellipsoidalCoords.x = (float)h;
-
-        return ellipsoidalCoords;*/
-
-        /*double longitude = Math.atan(cartesian.y/cartesian.x);
-        double p = Math.sqrt(Math.pow(cartesian.x, 2) + Math.pow(cartesian.y, 2));
-
-        //TODO: Implement improved latitude by iterating some other equation:  https://gssc.esa.int/navipedia/index.php/Ellipsoidal_and_Cartesian_Coordinates_Conversion (From Cartesian to Ellipsoidal coordinates)
-
-
-        double a = 6378137;
-        double f = 1/298.257;
-        double e = Math.sqrt(2*f-Math.pow(f,2));
-
+        //Output
+        double xlon = 0;
+        double xlat = 0;
         double h = 0;
-        double latitude = Math.atan(cartesian.z/((1-Math.exp(2))*p));
-        double N = a/Math.pow((1-Math.pow((e*Math.sin(latitude)),2)),0.5);
-        double delta_h = 1000000;
-        while (delta_h > 0.01){
-            double prev_h = h;
-            latitude = Math.atan(cartesian.z/p*(1-Math.pow(e,2)*(N/(N+h))));
-            N = a/Math.pow(1-Math.pow(e*Math.sin(latitude), 2), 0.5);
-            h = p/Math.cos(latitude)-N;
-            delta_h = Math.abs(h-prev_h);
+
+
+        double xl = Math.atan2(y, x);
+        double p = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+        double fi = Math.atan(z/p/(1.0-e2));
+        double fia = fi;
+
+        while(true){
+            double xn = Math.pow(a, 2)/(Math.sqrt(Math.pow(a*Math.cos(fi), 2)+Math.pow(b*Math.sin(fi), 2)));
+
+            h = p/Math.cos(fi) - xn;
+            fi = Math.atan(z/p/(1.0-e2*xn/(xn+h)));
+            if(Math.abs(fi-fia) > tol){
+                fia = fi;
+            }else{
+                break;
+            }
         }
 
+        xlon = xl;
+        xlat = fi;
 
 
-        Float3 ellipsoidalCoords = new Float3();
-        ellipsoidalCoords.x = (float)longitude;
-        ellipsoidalCoords.y = (float)latitude;
-        return ellipsoidalCoords;*/
+        double[] ellipsoid = new double[]{xlat, xlon, h};
+
+        return ellipsoid;
+
+
+        /*double latitude = Math.atan2(coordsCartesian[2], Math.sqrt(Math.pow(coordsCartesian[0], 2) + Math.pow(coordsCartesian[1], 2)));
+        double longitude = Math.atan2(coordsCartesian[1], coordsCartesian[0]);
+
+        return new double[]{(latitude*(180/Math.PI)), (longitude*(180/Math.PI))};*/
+
+
+
+
+
     }
 }

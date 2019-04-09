@@ -2,13 +2,15 @@ package com.example.navigationtesting;
 
 import android.util.Log;
 
+import com.example.navigationtesting.SatelliteMVC.Satellite;
+
 import java.util.ArrayList;
 
 public class RinexReader {
 
 
-    static final ArrayList<GalileoSatelliteData> parse(String rinexData){
-        ArrayList<GalileoSatelliteData> galileoSatellites = new ArrayList<>();
+    public static final ArrayList<Satellite> parse(String rinexData){
+        ArrayList<Satellite> satellites = new ArrayList<>();
         String[] lines = rinexData.split("\\n");
 
 
@@ -35,7 +37,8 @@ public class RinexReader {
             }else if(endOfHeader){
                 if(l.substring(0, 1).equals("E")){//Finish already started buffer and start a new one
                     if(rinexDataBuffer != ""){
-                        insertSatelliteData(galileoSatellites, createNewGalileoSatalliteData(rinexDataBuffer));
+                        insertSatelliteData(satellites, createnewSatelliteData(rinexDataBuffer));
+                        //Log.i("Project", "rinexDataBuffer: "+rinexDataBuffer);
                     }
                     rinexDataBuffer = l+"\n";
                 }else{
@@ -51,18 +54,24 @@ public class RinexReader {
                 }
             }
             lineNumber++;
+            //Log.i("Project", "lineNumner: "+lineNumber);
         }
+        Log.i("Project", "Target lines: "+Integer.toString(lines.length));
         //use last used buffer
-        insertSatelliteData(galileoSatellites, createNewGalileoSatalliteData(rinexDataBuffer));
+        insertSatelliteData(satellites, createnewSatelliteData(rinexDataBuffer));
 
 
 
-        return galileoSatellites;
+        return satellites;
     }
 
 
+    public static void testFunc(ArrayList<Satellite> galileoSatellites, Satellite newSatelliteData){
+        Log.i("Project", "HEJ!");
+    }
 
-    private static final void insertSatelliteData(ArrayList<GalileoSatelliteData> galileoSatellites, GalileoSatelliteData newSatelliteData){
+
+    public static void insertSatelliteData(ArrayList<Satellite> galileoSatellites, Satellite newSatelliteData){
         boolean satelliteWasUpdated = false;
         for(int i=0; i<galileoSatellites.size(); i++){
             if(galileoSatellites.get(i).getSvid() == newSatelliteData.getSvid()){
@@ -80,9 +89,10 @@ public class RinexReader {
 
     }
 
-    static final private GalileoSatelliteData createNewGalileoSatalliteData(String rinexData){
-        GalileoSatelliteData galileoSatellite = new GalileoSatelliteData(rinexData);
-        return galileoSatellite;
+    private static final Satellite createnewSatelliteData(String rinexData){
+        Satellite sat = new Satellite(rinexData);
+        //Log.i("Project", "Created new satellite from:" + rinexData);
+        return sat;
     }
 
 
