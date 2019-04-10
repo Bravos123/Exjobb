@@ -2,8 +2,9 @@ package com.example.navigationtesting;
 
 import android.location.Location;
 import android.location.LocationListener;
-import android.location.OnNmeaMessageListener;
 import android.os.Bundle;
+
+import com.example.navigationtesting.callbacks.Callback;
 
 public class GPSListener implements LocationListener {
     Callback callback;

@@ -19,13 +19,6 @@
  *
  */
 package com.example.navigationtesting;
-/**
- * <p>
- * Constants
- * </p>
- *
- * @author Eugenio Realini, Cryms.com
- */
 public class Constants {
 
     // Speed of Light [m/s]
@@ -49,6 +42,7 @@ public class Constants {
     public static final double HUNDREDSMILLI = 1e-1; // 100 ms in seconds
     public static final double ONEMILLI = 1e-3;      // 1 ms in seconds
 
+    public static final long millisecInHour = 3600000;
     public static final long DAYS_IN_WEEK = 7L;
     public static final long SEC_IN_DAY = 86400L;
     public static final long SEC_IN_HOUR = 3600L;

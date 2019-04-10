@@ -16,6 +16,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
@@ -29,6 +33,8 @@ dependencies {
     implementation files('libs/commons-net-3.6.jar')
     implementation 'com.android.support:support-v4:28.0.0'
     implementation 'com.android.support:design:28.0.0'
+
     implementation 'com.lemmingapex.trilateration:trilateration:1.0.2'
+    implementation 'com.squareup.okhttp3:okhttp:3.14.0'
 
 }

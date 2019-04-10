@@ -1,11 +1,11 @@
 package com.example.navigationtesting;
 
-import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+
+import com.example.navigationtesting.callbacks.Callback;
 
 public class AskForPremission extends AppCompatActivity{
     private final int myRequestCode = 1;

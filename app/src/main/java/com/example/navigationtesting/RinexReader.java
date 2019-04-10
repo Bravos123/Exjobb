@@ -56,7 +56,7 @@ public class RinexReader {
             lineNumber++;
             //Log.i("Project", "lineNumner: "+lineNumber);
         }
-        Log.i("Project", "Target lines: "+Integer.toString(lines.length));
+
         //use last used buffer
         insertSatelliteData(satellites, createnewSatelliteData(rinexDataBuffer));
 
@@ -72,6 +72,11 @@ public class RinexReader {
 
 
     public static void insertSatelliteData(ArrayList<Satellite> galileoSatellites, Satellite newSatelliteData){
+        if(newSatelliteData.getNoradId() == -1){
+            /*If norad id is -1 then no associated norad was found ffor the svid which makes this
+            * Satellite useless as the api that handles coordinate prediction needs a norad id.*/
+            return;//do not insert satellite
+        }
         boolean satelliteWasUpdated = false;
         for(int i=0; i<galileoSatellites.size(); i++){
             if(galileoSatellites.get(i).getSvid() == newSatelliteData.getSvid()){
