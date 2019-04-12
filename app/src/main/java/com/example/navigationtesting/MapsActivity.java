@@ -44,7 +44,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
 
         timer = new Timer();
-        satelliteController = new SatelliteController( this, 1);
+        satelliteController = new SatelliteController( this, this, 1);
     }
 
 
@@ -63,6 +63,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         runOnUiThread(new Runnable(){
             @Override
             public void run(){
+                Log.i("Project", "Latitude: "+l.getLatitude()+"   Longitude: "+l.getLongitude());
                 LatLng newPosition = new LatLng(l.getLatitude(), l.getLongitude());
                 mMap.addMarker(new MarkerOptions().position(newPosition).title("You are here"));
                 //mMap.moveCamera(CameraUpdateFactory.newLatLng(newPosition));
@@ -81,10 +82,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //mMap.clear();
                 Set<Integer> satellitesNoradId = satelliteController.getNORADSatelliteList();
 
+
                 for(int norad : satellitesNoradId){
                     Location l = new Location("Dummy provider");
-                    l.setLatitude(satelliteController.getSatelliteLatitude(norad));
-                    l.setLongitude(satelliteController.getSatelliteLongitude(norad));
+                    l.setLatitude(satelliteController.getSatelliteLatitudePseudorangeNotRequired(norad));
+                    l.setLongitude(satelliteController.getSatelliteLongitudePseudorangeNotRequired(norad));
                     updateMapFromLocation(l);
                 }
 

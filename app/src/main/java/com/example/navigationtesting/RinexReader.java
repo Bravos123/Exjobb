@@ -77,6 +77,19 @@ public class RinexReader {
             * Satellite useless as the api that handles coordinate prediction needs a norad id.*/
             return;//do not insert satellite
         }
+
+        if(newSatelliteData.getSvid() != 14){
+            return;
+        }
+
+        //Make sure the satellite ephemerides data is only a few hours old at max
+        long currentUnixTime = System.currentTimeMillis() / 1000L;
+        long unixTimeDifference = Math.abs(currentUnixTime - newSatelliteData.getEphemeridesUnixTime());
+        int maxSeconds = 13320;//Allow data that is at maximum 3.7 hours old
+        if(unixTimeDifference > maxSeconds){
+            return;//Don't insert satellite
+        }
+
         boolean satelliteWasUpdated = false;
         for(int i=0; i<galileoSatellites.size(); i++){
             if(galileoSatellites.get(i).getSvid() == newSatelliteData.getSvid()){
@@ -88,6 +101,10 @@ public class RinexReader {
 
         if(!satelliteWasUpdated){
             //satellite system has not been added, add it
+            Log.i("Project", "using this satellite: "+newSatelliteData.getSvid());
+            /*if(newSatelliteData.getSvid() != 19){
+                return;
+            }*/
             galileoSatellites.add(newSatelliteData);
         }
 

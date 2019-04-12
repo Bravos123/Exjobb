@@ -1,5 +1,7 @@
 package com.example.navigationtesting;
 
+import com.example.navigationtesting.SatelliteMVC.SatelliteTime;
+
 import java.util.ArrayList;
 
 public class GalileoEphemerides {
@@ -338,5 +340,9 @@ public class GalileoEphemerides {
 
     public double getTransmissionTimeOfMessage() {
         return transmissionTimeOfMessage;
+    }
+
+    public long getUnixTime(){
+        return time.getUnixTimeSecs();
     }
 }
