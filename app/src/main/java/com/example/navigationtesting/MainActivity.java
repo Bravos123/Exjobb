@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
+import com.example.navigationtesting.MapOfSatellitePositions.MapsShowPositionOfSatellites;
 import com.example.navigationtesting.callbacks.Callback;
 
 public class MainActivity extends AppCompatActivity implements Callback {
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements Callback {
         startGMapsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(MainActivity.this, MapsActivity.class);
+                Intent i = new Intent(MainActivity.this, MapsShowPositionOfSatellites.class);
                 startActivity(i);
             }
         });
