@@ -28,14 +28,14 @@ public class SatelliteNORADId {
             "2014-050A    40128 M*+ GSAT0201 (GALILEO 5)      ESA    2014-08-22  FRGUI                776.2   50.6   26252   16947    4.1215  \n" +
             "2014-050B    40129 M*+ GSAT0202 (GALILEO 6)      ESA    2014-08-22  FRGUI                776.2   50.6   26250   16949    2.0000   ";
 
-    public static final int getGalileoNORADId(int svid) throws NoradIdDoesNotExist {
+    public static final String getGalileoNORADId(int svid) throws NoradIdDoesNotExist {
       String[] databaseLines = galileoDatabasePart.split("\\n");
 
       for(String line : databaseLines){
           if(line.indexOf("GALILEO "+Integer.toString(svid)) != -1){
               String parsedLine = line.replaceAll(" [ \\t]+", " ");
               String noradId = parsedLine.split(" ")[1];
-              return Integer.parseInt(noradId);
+              return noradId;//Integer.parseInt(noradId);
           }
       }
 

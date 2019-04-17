@@ -14,11 +14,25 @@
         android:layout_marginTop="299dp"
         android:layout_marginEnd="162dp"
         android:layout_marginBottom="384dp"
-        android:text="start google maps"
+        android:text="Show GALILEO satellite positions"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/ShowMyLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:text="show my location"
+        app:layout_constraintBottom_toTopOf="@+id/rawGnssTestButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/startGMaps" />
 
     <Button
         android:id="@+id/rawGnssTestButton"

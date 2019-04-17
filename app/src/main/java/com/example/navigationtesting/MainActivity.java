@@ -10,6 +10,7 @@ import android.widget.Button;
 
 import com.example.navigationtesting.MapOfSatellitePositions.MapsShowPositionOfSatellites;
 import com.example.navigationtesting.callbacks.Callback;
+import com.example.navigationtesting.showMyLocation.ShowMyLocation;
 
 public class MainActivity extends AppCompatActivity implements Callback {
     private int targetPermissions = 3;
@@ -17,6 +18,7 @@ public class MainActivity extends AppCompatActivity implements Callback {
 
     private Button startGMapsButton;
     private Button RawGnssTestButton;
+    private Button showMyLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +55,15 @@ public class MainActivity extends AppCompatActivity implements Callback {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, MapsShowPositionOfSatellites.class);
+                startActivity(i);
+            }
+        });
+
+        showMyLocation = findViewById(R.id.ShowMyLocation);
+        showMyLocation.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(MainActivity.this, ShowMyLocation.class);
                 startActivity(i);
             }
         });

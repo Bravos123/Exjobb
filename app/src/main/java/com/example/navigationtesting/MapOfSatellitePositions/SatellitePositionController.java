@@ -2,6 +2,8 @@ package com.example.navigationtesting.MapOfSatellitePositions;
 
 import android.util.Log;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,6 +24,7 @@ import okhttp3.ResponseBody;
 
 public class SatellitePositionController {
     private HashMap<String, JSONObject> satellitePositionPredictions;
+    private HashMap<String, LatLng> previouslySentLongLatBuffer;//In case we can't find the current unix time position to send back, send back the previous position
     private Timer scheduleLoadMorePredictions;
 
     private OnSatellitePositionControllerReadyCallback callback;
@@ -36,40 +39,51 @@ public class SatellitePositionController {
 
     public SatellitePositionController(OnSatellitePositionControllerReadyCallback callback){
         satellitePositionPredictions = new HashMap<>();
+        previouslySentLongLatBuffer = new HashMap<>();
         this.callback = callback;
         scheduleLoadMorePredictions = new Timer();
     }
 
 
     public void initialize(){
-        sendRequest("http://83.255.110.186/SatelliteNavigation/retrieveAvailibleSatellites", new Callback() {
-            @Override public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-            }
-
-            @Override public void onResponse(Call call, Response response) throws IOException {
-                try (ResponseBody responseBody = response.body()) {
-                    if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-
-                    try {
-                        String responseText = responseBody.string();
-                        Log.i("Project", "Availible satellites: "+responseText);
-                        availibleSatellites = new JSONArray(responseText);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    downloadPredictionData();
+        if(availibleSatellites == null){
+            sendRequest("http://83.255.110.186/SatelliteNavigation/retrieveAvailibleSatellites", new Callback() {
+                @Override public void onFailure(Call call, IOException e) {
+                    //e.printStackTrace();
+                    System.out.println("Failed getting availible satellites. Try again");
+                    initialize();
                 }
-            }
-        });
+
+                @Override public void onResponse(Call call, Response response) throws IOException {
+                    try (ResponseBody responseBody = response.body()) {
+                        if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+                        try {
+                            String responseText = responseBody.string();
+                            Log.i("Project", "Availible satellites: "+responseText);
+                            availibleSatellites = new JSONArray(responseText);
+                            //availibleSatellites = new JSONArray("[\"43567\"]");//testing
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        downloadPredictionData();
+                    }
+                }
+            });
+        }
+
     }
 
 
 
 
     private void downloadPredictionData(){
-
+        //Log.i("Project", "Download more prediction data");
         //Get how many satellites are availible
+        if(requestsPending != 0){
+            return;
+        }
+        requestsPending = availibleSatellites.length();
         for(int i=0; i<availibleSatellites.length(); i++){
             String satelliteNoradId;
 
@@ -87,14 +101,14 @@ public class SatellitePositionController {
 
 
     private void retrieveSatellitePredictions(final String noradId){
-        requestsPending++;
-        Log.i("Project", "Send this request: "+"http://83.255.110.186/SatelliteNavigation/retrieveSatellitePosition?NORADID="+noradId);
+        //Log.i("Project", "Send this request: "+"http://83.255.110.186/SatelliteNavigation/retrieveSatellitePosition?NORADID="+noradId);
         sendRequest("http://83.255.110.186/SatelliteNavigation/retrieveSatellitePosition?NORADID="+noradId,
                 new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
                         e.printStackTrace();
-                        Log.i("Project", "Failure");
+                        Log.i("Project", "Failure. Try again");
+                        retrieveSatellitePredictions(noradId);
                     }
 
                     @Override
@@ -104,9 +118,10 @@ public class SatellitePositionController {
                             if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
                             String responseTExt = responseBody.string();
-                            Log.i("Project", "Response");
+                            //Log.i("Project", "Response for satellite: "+noradId);
                             if(satellitePositionPredictions.get(noradId) == null){
                                 try {
+                                    //Log.i("Project", "Replacing JSONOBject");
                                     satellitePositionPredictions.put(noradId, new JSONObject(responseTExt));
                                 } catch (JSONException e) {
                                     e.printStackTrace();
@@ -118,6 +133,8 @@ public class SatellitePositionController {
                                     e.printStackTrace();
                                 }
                             }
+
+                            //Log.i("Project", "downloaded:\n"+satellitePositionPredictions.get(noradId).toString());
 
                             requestsPending--;
 
@@ -143,7 +160,7 @@ public class SatellitePositionController {
             public void run() {
                 downloadPredictionData();
             }
-        }, 10*1000);
+        }, 5000);
     }
 
 
@@ -159,37 +176,60 @@ public class SatellitePositionController {
         return satellitePositionPredictions.keySet();
     }
 
-    public double getSatelliteLongitude(String targetNoradId) {
+    public LatLng getSatelliteCoordinates(String targetNoradId){
         long unixTime = System.currentTimeMillis() / 1000L;
+
         try {
-            long checkID = Long.parseLong(targetNoradId);
-            while(!satellitePositionPredictions.containsKey(Long.toString(checkID))){
-                checkID++;
+
+            LatLng returnPos;
+            long targetUnixTime = -1;
+            //Check if target unix time exists
+            if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime))){
+                targetUnixTime = unixTime;
+            }else if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime+1))){
+                targetUnixTime = unixTime+1;
+            }else if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime-1))){
+                targetUnixTime = unixTime-1;
             }
-            return satellitePositionPredictions.get(Long.toString(checkID)).getJSONObject("positions")
-                    .getJSONObject(Long.toString(unixTime)).getDouble("lon");
+
+            if(targetUnixTime != -1){
+                returnPos = new LatLng(
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat"),
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon"));
+                if(previouslySentLongLatBuffer.get(targetNoradId) == null){
+                    previouslySentLongLatBuffer.put(targetNoradId, returnPos);
+                }else{
+                    previouslySentLongLatBuffer.replace(targetNoradId, returnPos);
+                }
+
+                return returnPos;
+            }
+
+
+
+            /*returnPos = new LatLng(
+                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lat"),
+                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lon"));
+            previouslySentLongLatBuffer.put(targetNoradId, returnPos);
+
+            return returnPos;*/
+
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return 0;
+        Log.i("Project","Coudln't fetch current position, returning previous sent position");
+        //try {
+            //Log.i("Project",satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").toString()+"\n");
+        /*} catch (JSONException e1) {
+            e1.printStackTrace();
+        }*/
+        return previouslySentLongLatBuffer.get(targetNoradId);
+
     }
 
-    public double getSatelliteLatitude(String targetNoradId) {
-        long unixTime = System.currentTimeMillis() / 1000L;
-        try {
-            long checkID = Long.parseLong(targetNoradId);
-            while(!satellitePositionPredictions.containsKey(Long.toString(checkID))){
-                checkID++;
-            }
-            return satellitePositionPredictions.get(Long.toString(checkID)).getJSONObject("positions")
-                    .getJSONObject(Long.toString(unixTime)).getDouble("lat");
-
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
 
 
     public void sendRequest(String requestUrl, Callback cB){
