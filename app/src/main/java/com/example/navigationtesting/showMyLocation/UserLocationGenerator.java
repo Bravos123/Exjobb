@@ -7,11 +7,6 @@ import com.example.navigationtesting.MapOfSatellitePositions.SatellitePositionCo
 import com.example.navigationtesting.SatellitePseudorangeController.OnPseudorangeControllerReadyCallback;
 import com.example.navigationtesting.SatellitePseudorangeController.PseudorangeController;
 import com.google.android.gms.maps.model.LatLng;
-import com.lemmingapex.trilateration.NonLinearLeastSquaresSolver;
-import com.lemmingapex.trilateration.TrilaterationFunction;
-
-import org.apache.commons.math3.fitting.leastsquares.LeastSquaresOptimizer;
-import org.apache.commons.math3.fitting.leastsquares.LevenbergMarquardtOptimizer;
 
 import java.util.ArrayList;
 
@@ -63,8 +58,6 @@ public class UserLocationGenerator implements OnSatellitePositionControllerReady
 
 
     private void calculateCoordinates(){
-        //double[][][] satellitePositions = new double[][][];
-        //double[] pseudoranges = new double[];
 
 
     }

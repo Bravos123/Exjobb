@@ -21,7 +21,7 @@ public class Satellite {
         myPositionData = CalculateSatellitePosition.getGalileoSatellitePosition(eph);
 
         try {
-            noradId = SatelliteNORADId.getGalileoNORADId(eph.getSvid());
+            noradId = Integer.parseInt(SatelliteNORADId.getGalileoNORADId(eph.getSvid()));
         } catch (NoradIdDoesNotExist noradIdDoesNotExist) {
             noradId = -1;
         }

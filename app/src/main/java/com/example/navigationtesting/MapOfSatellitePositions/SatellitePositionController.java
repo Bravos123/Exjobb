@@ -61,8 +61,8 @@ public class SatellitePositionController {
                         try {
                             String responseText = responseBody.string();
                             Log.i("Project", "Availible satellites: "+responseText);
-                            availibleSatellites = new JSONArray(responseText);
-                            //availibleSatellites = new JSONArray("[\"43567\"]");//testing
+                            //availibleSatellites = new JSONArray(responseText);
+                            availibleSatellites = new JSONArray("[\"43567\"]");//testing
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
