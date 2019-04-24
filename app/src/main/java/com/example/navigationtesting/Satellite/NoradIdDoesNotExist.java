@@ -1,4 +1,4 @@
-package com.example.navigationtesting.SatelliteMVC;
+package com.example.navigationtesting.Satellite;
 
 public class NoradIdDoesNotExist extends Exception {
 

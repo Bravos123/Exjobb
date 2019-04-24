@@ -11,21 +11,20 @@ import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.Pair;
 
-import com.example.navigationtesting.GnssLocationListener;
-import com.example.navigationtesting.SatelliteMVC.NoradIdDoesNotExist;
-import com.example.navigationtesting.SatelliteMVC.Satellite;
-import com.example.navigationtesting.SatelliteMVC.SatelliteNORADId;
+import com.example.navigationtesting.rawGnssTest.GnssLocationListener;
+import com.example.navigationtesting.Satellite.NoradIdDoesNotExist;
+import com.example.navigationtesting.Satellite.SatelliteNORADId;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Set;
 
-import static com.example.navigationtesting.RawGnssTest.LOCATION_RATE_NETWORK_MS;
+import static com.example.navigationtesting.rawGnssTest.RawGnssTest.LOCATION_RATE_NETWORK_MS;
 
 public class PseudorangeController {
-    private Set<String> noradIdSet;
+    private Set<Integer> noradIdSet;
     private LocationManager locationManager;
-    private HashMap<String, Pair<Long, Double>> noradAndPseudorande;
+    private HashMap<Integer, Pair<Long, Double>> noradAndPseudorande;
     private OnPseudorangeControllerReadyCallback readyCallback;
 
 
@@ -49,9 +48,9 @@ public class PseudorangeController {
     }
 
 
-    public void setAvailibleSatellitesNORADList(Set<String> noradList){
+    public void setAvailibleSatellitesNORADList(Set<Integer> noradList){
         noradIdSet = noradList;
-        for(String noradId : noradList){
+        for(int noradId : noradList){
             Pair<Long, Double> addTime = new Pair(System.currentTimeMillis() / 1000L, -1.0);
             noradAndPseudorande.put(noradId, addTime);
         }
@@ -76,7 +75,7 @@ public class PseudorangeController {
 
 
                         try {
-                            String satelliteNoradId = SatelliteNORADId.getGalileoNORADId(gnssM.getSvid());
+                            int satelliteNoradId = SatelliteNORADId.getGalileoNORADId(gnssM.getSvid());
                             updateSatellitePseudorange(satelliteNoradId, pseudorange);
                         } catch (NoradIdDoesNotExist noradIdDoesNotExist) {
                             noradIdDoesNotExist.printStackTrace();
@@ -94,7 +93,7 @@ public class PseudorangeController {
             };
 
 
-    private void updateSatellitePseudorange(String noradId, double newPseudoRange){
+    private void updateSatellitePseudorange(int noradId, double newPseudoRange){
         if(newPseudoRange > 10000){
             if(noradAndPseudorande.get(noradId) != null){
                 Pair<Long, Double> addTime = new Pair(System.currentTimeMillis() / 1000L, newPseudoRange);
@@ -102,7 +101,7 @@ public class PseudorangeController {
             }
         }
         int pseudorangesAvailible = 0;
-        for(String nId : noradIdSet){
+        for(int nId : noradIdSet){
             if(noradAndPseudorande.get(nId) != null){
                 pseudorangesAvailible++;
             }

@@ -2,6 +2,9 @@ package com.example.navigationtesting;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,13 +12,16 @@ import android.view.View;
 import android.widget.Button;
 
 import com.example.navigationtesting.MapOfSatellitePositions.MapsShowPositionOfSatellites;
-import com.example.navigationtesting.callbacks.Callback;
+import com.example.navigationtesting.rawGnssTest.RawGnssTest;
 import com.example.navigationtesting.showMyLocation.ShowMyLocation;
 
-public class MainActivity extends AppCompatActivity implements Callback {
-    private int targetPermissions = 3;
-    private int allowedPermissions = 0;
+import java.util.ArrayList;
+import java.util.List;
 
+public class MainActivity extends AppCompatActivity {
+    private int returnedAllowedPremissions = 0;
+    private final int REQUESTCODE = 1;
+    private int premissionsAskingFor = 0;
     private Button startGMapsButton;
     private Button RawGnssTestButton;
     private Button showMyLocation;
@@ -28,20 +34,32 @@ public class MainActivity extends AppCompatActivity implements Callback {
 
 
     private void askForALlPermissions(){
-        new AskForPremission(this, Manifest.permission.INTERNET);
-        new AskForPremission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-        new AskForPremission(this, Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS);
+        String[] targetPermissions = new String[]{
+                Manifest.permission.INTERNET,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS
+        };
+
+
+        List<String> permissionRequests = new ArrayList<>();
+        for(String permission : targetPermissions){
+            if(!hasPremission( permission)){
+                permissionRequests.add(permission);
+            }
+        }
+        premissionsAskingFor = permissionRequests.size();
+        ActivityCompat.requestPermissions(this,
+                targetPermissions,
+                REQUESTCODE);
     }
 
-    @Override
-    public void callBack(String name, Object in) {
-        if(in.equals(true)){
-            allowedPermissions++;
-        }
-        Log.d("Project", name+": "+in.toString());
 
-        if(allowedPermissions == targetPermissions){//All required permissions were granted, move on
-            init();
+    public boolean hasPremission(String premissionName){
+        if(ContextCompat.checkSelfPermission(this, premissionName) !=
+                PackageManager.PERMISSION_GRANTED){
+            return false;
+        }else{
+            return true;
         }
     }
 
@@ -55,6 +73,7 @@ public class MainActivity extends AppCompatActivity implements Callback {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, MapsShowPositionOfSatellites.class);
+                i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(i);
             }
         });
@@ -76,5 +95,26 @@ public class MainActivity extends AppCompatActivity implements Callback {
                 startActivity(i);
             }
         });
+    }
+
+
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        Log.i("Project", "requestCode: "+requestCode);
+        switch(requestCode){
+            case REQUESTCODE:{
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    //Permission granted
+                    returnedAllowedPremissions++;
+                    if(returnedAllowedPremissions >= premissionsAskingFor){
+                        init();
+                    }
+
+                }
+
+            }
+        }
     }
 }

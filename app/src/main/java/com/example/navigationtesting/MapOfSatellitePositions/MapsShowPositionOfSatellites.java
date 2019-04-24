@@ -1,15 +1,15 @@
 package com.example.navigationtesting.MapOfSatellitePositions;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Paint;
-import android.location.Location;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
 
+import com.example.navigationtesting.MainActivity;
 import com.example.navigationtesting.R;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -35,19 +35,21 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
     private SatellitePositionController satelliteController;
     private Timer timer;
 
-    private HashMap<String, Pair<Polyline, List<LatLng>>> satellitesPolylines;
+    private HashMap<Integer, Pair<Polyline, List<LatLng>>> satellitesPolylines;
 
     private int skipCounter = 0;
     private final int skipTimer = 30;
 
-    private HashMap<String, Marker> satelliteMarkerBuffer;
+    private HashMap<Integer, Marker> satelliteMarkerBuffer;
+
+    private boolean terminated = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        satelliteMarkerBuffer = new HashMap<String, Marker>();
+        satelliteMarkerBuffer = new HashMap<Integer, Marker>();
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -74,7 +76,10 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
     }
 
 
-    private void updateSatelliteLocation(final LatLng newPosition, String noradId){
+    private void updateSatelliteLocation(final LatLng newPosition, int noradId){
+        if(terminated){
+            return;
+        }
         runOnUiThread(new Runnable(){
             @Override
             public void run(){
@@ -133,15 +138,18 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
 
 
     private void updateSatellites(){
+        if(terminated){
+            return;
+        }
         runOnUiThread(new Runnable() {
 
             @Override
             public void run() {
                 //mMap.clear();
-                Set<String> satellitesNoradId = satelliteController.getNORADSatelliteList();
+                Set<Integer> satellitesNoradId = satelliteController.getNORADSatelliteList();
 
 
-                for(String noradId : satellitesNoradId){
+                for(int noradId : satellitesNoradId){
                     //Log.i("Project", noradId);
                     //Log.i("Project", "Latitude: "+satelliteController.getSatelliteLatitude(noradId)+"  longitude: "+satelliteController.getSatelliteLongitude(noradId));
                     LatLng newPosition = satelliteController.getSatelliteCoordinates(noradId);
@@ -159,7 +167,7 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
                             skipCounter--;
                         }
                     }
-                }, 5000);
+                }, SatellitePositionController.REFRESH_TIME_MS);
             }
         });
 
@@ -169,10 +177,18 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
     @Override
     public void onSatellitePositionControllerReadyCallback() {
         Log.i("Project", "SatelliteController is now ready");
-        Set<String> satellitesNoradId = satelliteController.getNORADSatelliteList();
+        Set<Integer> satellitesNoradId = satelliteController.getNORADSatelliteList();
         Log.i("Project", "We have: "+satellitesNoradId.size()+" satellites");
         updateSatellites();
     }
 
+
+    @Override
+    public void onBackPressed(){
+        terminated = true;
+        Intent i = new Intent(MapsShowPositionOfSatellites.this, MainActivity.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(i);
+    }
 
 }

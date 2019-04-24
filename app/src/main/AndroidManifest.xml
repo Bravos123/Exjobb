@@ -44,7 +44,7 @@
             android:name=".showMyLocation.ShowMyLocation"
             android:label="@string/title_activity_show_my_location"></activity>
         <activity
-            android:name=".RawGnssTest"
+            android:name=".rawGnssTest.RawGnssTest"
             android:screenOrientation="portrait" />
         <activity
             android:name=".MapOfSatellitePositions.MapsShowPositionOfSatellites"

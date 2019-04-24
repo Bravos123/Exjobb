@@ -16,15 +16,15 @@ import java.util.TimerTask;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class SatellitePositionController {
-    private HashMap<String, JSONObject> satellitePositionPredictions;
-    private HashMap<String, LatLng> previouslySentLongLatBuffer;//In case we can't find the current unix time position to send back, send back the previous position
+    public static final int REFRESH_TIME_MS = 2000;
+    private HashMap<Integer, JSONObject> satellitePositionPredictions;
+    private HashMap<Integer, LatLng> previouslySentLongLatBuffer;//In case we can't find the current unix time position to send back, send back the previous position
     private Timer scheduleLoadMorePredictions;
 
     private OnSatellitePositionControllerReadyCallback callback;
@@ -47,10 +47,11 @@ public class SatellitePositionController {
 
     public void initialize(){
         if(availibleSatellites == null){
-            sendRequest("http://83.255.110.186/SatelliteNavigation/retrieveAvailibleSatellites", new Callback() {
+            //83.255.110.186
+            sendRequest("http://178.62.193.218:8080/SatellitesNavigationApi/retrieveAvailibleSatellites", new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
                     //e.printStackTrace();
-                    System.out.println("Failed getting availible satellites. Try again");
+                    Log.i("Project","Failed getting availible satellites. Try again");
                     initialize();
                 }
 
@@ -61,8 +62,8 @@ public class SatellitePositionController {
                         try {
                             String responseText = responseBody.string();
                             Log.i("Project", "Availible satellites: "+responseText);
-                            //availibleSatellites = new JSONArray(responseText);
-                            availibleSatellites = new JSONArray("[\"43567\"]");//testing
+                            availibleSatellites = new JSONArray(responseText);
+                            //availibleSatellites = new JSONArray("[40128]");//testing
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -85,10 +86,10 @@ public class SatellitePositionController {
         }
         requestsPending = availibleSatellites.length();
         for(int i=0; i<availibleSatellites.length(); i++){
-            String satelliteNoradId;
+            int satelliteNoradId;
 
             try {
-                satelliteNoradId = availibleSatellites.getString(i);
+                satelliteNoradId = availibleSatellites.getInt(i);
                 retrieveSatellitePredictions(satelliteNoradId);
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -100,9 +101,10 @@ public class SatellitePositionController {
     }
 
 
-    private void retrieveSatellitePredictions(final String noradId){
-        //Log.i("Project", "Send this request: "+"http://83.255.110.186/SatelliteNavigation/retrieveSatellitePosition?NORADID="+noradId);
-        sendRequest("http://83.255.110.186/SatelliteNavigation/retrieveSatellitePosition?NORADID="+noradId,
+    private void retrieveSatellitePredictions(final int noradId){
+        //Log.i("Project", "Send this request: "+"http://83.255.110.186/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+noradId);
+        //83.255.110.186
+        sendRequest("http://178.62.193.218:8080/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+Integer.toString(noradId),
                 new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
@@ -160,7 +162,7 @@ public class SatellitePositionController {
             public void run() {
                 downloadPredictionData();
             }
-        }, 5000);
+        }, REFRESH_TIME_MS);
     }
 
 
@@ -172,11 +174,11 @@ public class SatellitePositionController {
 
 
 
-    public Set<String> getNORADSatelliteList() {
+    public Set<Integer> getNORADSatelliteList() {
         return satellitePositionPredictions.keySet();
     }
 
-    public LatLng getSatelliteCoordinates(String targetNoradId){
+    public LatLng getSatelliteCoordinates(int targetNoradId){
         long unixTime = System.currentTimeMillis() / 1000L;
 
         try {
@@ -209,7 +211,7 @@ public class SatellitePositionController {
 
 
 
-            /*returnPos = new LatLng(
+            /*returnPos = new LatLng(§
                     satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lat"),
                     satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lon"));
             previouslySentLongLatBuffer.put(targetNoradId, returnPos);

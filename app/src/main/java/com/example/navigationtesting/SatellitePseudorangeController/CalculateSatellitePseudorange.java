@@ -3,7 +3,7 @@ package com.example.navigationtesting.SatellitePseudorangeController;
 import android.location.GnssMeasurement;
 import android.location.GnssMeasurementsEvent;
 
-import com.example.navigationtesting.Constants;
+import com.example.navigationtesting.rawGnssTest.Constants;
 
 import static android.location.GnssMeasurement.STATE_GAL_E1C_2ND_CODE_LOCK;
 import static android.location.GnssMeasurement.STATE_GLO_TOD_DECODED;

@@ -1,18 +1,20 @@
-package com.example.navigationtesting;
+package com.example.navigationtesting.rawGnssTest;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.example.navigationtesting.callbacks.Callback;
+import com.example.navigationtesting.R;
+import com.example.navigationtesting.Satellite.Satellite;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
-public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList<GalileoSatelliteData>> {
+public class RawGnssTest extends AppCompatActivity implements OnRawGnssListenerCallback {
     public static final long LOCATION_RATE_NETWORK_MS = TimeUnit.SECONDS.toMillis(60L);
-    ArrayList<GalileoSatelliteData> satelliteData;
+    ArrayList<Satellite> satelliteData;
 
     LinearLayout layoutSatellites;
 
@@ -30,20 +32,6 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
 
 
 
-
-
-
-    @Override
-    public void callBack(String name, ArrayList<GalileoSatelliteData> satelliteData) {
-        //Log.i("Project", "updatedSatellies.size: "+satelliteData.size()+"-------------------------------------");
-        this.satelliteData = satelliteData;
-        updateSatalliteDataUI();
-
-    }
-
-
-
-
     private void updateSatalliteDataUI(){
         runOnUiThread(new Runnable(){
             @Override
@@ -52,19 +40,16 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
 
 
 
-                for(GalileoSatelliteData g : satelliteData){
-                    if(g.getPseudorange() > 0){
+                for(Satellite s : satelliteData){
+                    if(s.getPseudorange() > 0){
                         TextView newSatId = new TextView(RawGnssTest.this);
-                        newSatId.setText("svid: "+Integer.toString(g.getSvid()));
+                        newSatId.setText("svid: "+Integer.toString(s.getSvid())+"   -   NORAD ID: "+Integer.toString(s.getNoradId()));
                         layoutSatellites.addView(newSatId);
 
                         TextView satPseudorange = new TextView(RawGnssTest.this);
-                        satPseudorange.setText("pseudorange: "+Double.toString(g.getPseudorangeInKilometers())+" kilometers");
+                        satPseudorange.setText("pseudorange: "+Double.toString(s.getPseudorangeInKilometers())+" kilometers");
                         layoutSatellites.addView(satPseudorange);
 
-                        TextView satPosition = new TextView(RawGnssTest.this);
-                        satPosition.setText("position: "+g.getPosition().toString());
-                        layoutSatellites.addView(satPosition);
                     }
 
                 }
@@ -75,7 +60,10 @@ public class RawGnssTest extends AppCompatActivity implements Callback<ArrayList
     }
 
 
-
-
-
+    @Override
+    public void onRawGnssListenerCallback(ArrayList<Satellite> satelliteData) {
+        Log.i("Project", Integer.toString(satelliteData.size()));
+        this.satelliteData = satelliteData;
+        updateSatalliteDataUI();
+    }
 }
