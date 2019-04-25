@@ -86,14 +86,14 @@ public class RawGnssListener{
                     Collection<GnssMeasurement> measurements = event.getMeasurements();
                     //Looping through each satellite in the constelation?
                     for(GnssMeasurement gnssM : measurements){
-                        gnssM.getPseudorangeRateMetersPerSecond();
+                        //gnssM.getPseudorangeRateMetersPerSecond();
                         //Log.i("Project", );
 
 
                         gnssM.getConstellationType();
                         double pseudorange = CalculateSatellitePseudorange.calculatePseudorange(gnssM, event);
 
-                        //Log.i("Project", "pseudorange: "+pseudorange);
+                        Log.i("Project", "pseudorange: "+pseudorange);
 
                         if(galileoSatellites.get(gnssM.getSvid()) == null){
                             galileoSatellites.put(gnssM.getSvid(), new Satellite(gnssM.getSvid()));

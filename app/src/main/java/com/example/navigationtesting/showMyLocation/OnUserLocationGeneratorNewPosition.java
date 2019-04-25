@@ -1,7 +1,7 @@
 package com.example.navigationtesting.showMyLocation;
 
-import com.google.android.gms.maps.model.LatLng;
+import com.example.navigationtesting.Satellite.LatLngAlt;
 
 public interface OnUserLocationGeneratorNewPosition {
-    void onUserLocationGeneratorNewPosition(LatLng pos);
+    void onUserLocationGeneratorNewPosition(LatLngAlt pos);
 }

@@ -2,6 +2,7 @@ package com.example.navigationtesting.SatellitePseudorangeController;
 
 import android.location.GnssMeasurement;
 import android.location.GnssMeasurementsEvent;
+import android.util.Log;
 
 import com.example.navigationtesting.rawGnssTest.Constants;
 
@@ -89,17 +90,12 @@ public class CalculateSatellitePseudorange {
                     double tRxGalileoTOW = TrxGnss % Constants.NUMBER_NANO_SECONDS_PER_WEEK;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
                     pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
-                    if(pseudoRange >= 4000000){/*Sometimes unrealistically large pseudoranges area created here*/
-                        //Log.i("Project", "Pseudorange problem GALILEO Constellation STATE_TOW_DECODED");
-                    }
                 }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
                     double tRxGalileoE1_2nd = galileoTime % Constants.NumberNanoSeconds100Milli;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
                     pseudoRange = ((galileoTime - tTxGalileo) % Constants.NumberNanoSeconds100Milli) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
 
                 }
-
-
 
             }
             case 9:{//CONSTELLATION_UNKNOWN

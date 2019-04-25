@@ -96,6 +96,7 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
                     sattMarkerOption.position(newPosition);
                     satelliteMarkerBuffer.put(noradId, mMap.addMarker(sattMarkerOption));
                 }else{
+                    satelliteMarkerBuffer.get(noradId).setTitle(noradId+"  -  lat: "+newPosition.latitude+"  lng: "+newPosition.longitude);
                     satelliteMarkerBuffer.get(noradId).setPosition(newPosition);
                 }
 

@@ -15,6 +15,7 @@ import com.example.navigationtesting.rawGnssTest.GnssLocationListener;
 import com.example.navigationtesting.Satellite.NoradIdDoesNotExist;
 import com.example.navigationtesting.Satellite.SatelliteNORADId;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Set;
@@ -51,7 +52,7 @@ public class PseudorangeController {
     public void setAvailibleSatellitesNORADList(Set<Integer> noradList){
         noradIdSet = noradList;
         for(int noradId : noradList){
-            Pair<Long, Double> addTime = new Pair(System.currentTimeMillis() / 1000L, -1.0);
+            Pair<Long, Double> addTime = new Pair<>(System.currentTimeMillis() / 1000L, -1.0);
             noradAndPseudorande.put(noradId, addTime);
         }
     }
@@ -61,18 +62,18 @@ public class PseudorangeController {
 
                 @Override
                 public void onGnssMeasurementsReceived(GnssMeasurementsEvent event) {
-                    //Log.i("Project", event.toString());
                     //Calculate pseudorange
                     Collection<GnssMeasurement> measurements = event.getMeasurements();
                     //Looping through each satellite in the constelation?
                     for(GnssMeasurement gnssM : measurements){
-                        gnssM.getPseudorangeRateMetersPerSecond();
                         //Log.i("Project", );
 
 
                         gnssM.getConstellationType();
                         double pseudorange = CalculateSatellitePseudorange.calculatePseudorange(gnssM, event);
-
+                        if(pseudorange <= 0){
+                            return;
+                        }
 
                         try {
                             int satelliteNoradId = SatelliteNORADId.getGalileoNORADId(gnssM.getSvid());
@@ -83,6 +84,7 @@ public class PseudorangeController {
 
                     }
 
+                    readyCallback.onPseudorangeControllerReadyCallback();
 
                 }
 
@@ -94,20 +96,13 @@ public class PseudorangeController {
 
 
     private void updateSatellitePseudorange(int noradId, double newPseudoRange){
-        if(newPseudoRange > 10000){
-            if(noradAndPseudorande.get(noradId) != null){
-                Pair<Long, Double> addTime = new Pair(System.currentTimeMillis() / 1000L, newPseudoRange);
-                noradAndPseudorande.replace(noradId, addTime);
-            }
-        }
-        int pseudorangesAvailible = 0;
-        for(int nId : noradIdSet){
-            if(noradAndPseudorande.get(nId) != null){
-                pseudorangesAvailible++;
-            }
-        }
-        if(pseudorangesAvailible > 3){
-            readyCallback.onPseudorangeControllerReadyCallback();
+        Log.i("Project", "newPseudoRange: "+newPseudoRange);
+        //Log.i("Project", "New pseudorange: "+newPseudoRange);
+        Pair<Long, Double> addTime = new Pair<>(System.currentTimeMillis() / 1000L, newPseudoRange);
+        if(noradAndPseudorande.get(noradId) != null) {
+            noradAndPseudorande.replace(noradId, addTime);
+        }else{
+            noradAndPseudorande.put(noradId, addTime);
         }
     }
 
@@ -123,6 +118,26 @@ public class PseudorangeController {
     }
 
 
+    public ArrayList<Pair<Integer, Double>> getArrayOfSatellitePseudoranges(){
+        ArrayList<Pair<Integer, Double>> sattsAndPseudoR = new ArrayList<>();
+
+        Long currentUnixTime = System.currentTimeMillis() / 1000L;
+        int precision = 5;
+        do{
+            sattsAndPseudoR.clear();
+            for(int noradId : noradIdSet){
+                if(currentUnixTime - noradAndPseudorande.get(noradId).first < precision){//If the pseudorange date is 10 seconds or younger
+                    sattsAndPseudoR.add(new Pair<>(noradId, noradAndPseudorande.get(noradId).second));
+                }
+            }
+            precision++;
+        }while(sattsAndPseudoR.size()<4 && precision < 120);
+
+
+
+
+        return sattsAndPseudoR;
+    }
 
 
 }

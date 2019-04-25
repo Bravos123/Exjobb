@@ -62,7 +62,6 @@ public class RawGnssTest extends AppCompatActivity implements OnRawGnssListenerC
 
     @Override
     public void onRawGnssListenerCallback(ArrayList<Satellite> satelliteData) {
-        Log.i("Project", Integer.toString(satelliteData.size()));
         this.satelliteData = satelliteData;
         updateSatalliteDataUI();
     }

@@ -36,6 +36,8 @@ public class SatellitePositionController {
 
     private final OkHttpClient client = new OkHttpClient();
 
+    private String apiHost = "http://178.62.193.218:8080";//"http://192.168.0.156:8888"
+
 
     public SatellitePositionController(OnSatellitePositionControllerReadyCallback callback){
         satellitePositionPredictions = new HashMap<>();
@@ -48,7 +50,7 @@ public class SatellitePositionController {
     public void initialize(){
         if(availibleSatellites == null){
             //83.255.110.186
-            sendRequest("http://178.62.193.218:8080/SatellitesNavigationApi/retrieveAvailibleSatellites", new Callback() {
+            sendRequest(apiHost+"/SatellitesNavigationApi/retrieveAvailibleSatellites", new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
                     //e.printStackTrace();
                     Log.i("Project","Failed getting availible satellites. Try again");
@@ -57,6 +59,10 @@ public class SatellitePositionController {
 
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     try (ResponseBody responseBody = response.body()) {
+                        if(response.code() == 500){//Retry on failure
+                            Log.i("Project","Failed getting availible satellites. Try again");
+                            initialize();
+                        }
                         if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
                         try {
@@ -66,6 +72,10 @@ public class SatellitePositionController {
                             //availibleSatellites = new JSONArray("[40128]");//testing
                         } catch (JSONException e) {
                             e.printStackTrace();
+                        }
+                        if(availibleSatellites == null){
+                            Log.i("Project","Failed getting availible satellites. Try again");
+                            initialize();
                         }
                         downloadPredictionData();
                     }
@@ -104,7 +114,7 @@ public class SatellitePositionController {
     private void retrieveSatellitePredictions(final int noradId){
         //Log.i("Project", "Send this request: "+"http://83.255.110.186/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+noradId);
         //83.255.110.186
-        sendRequest("http://178.62.193.218:8080/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+Integer.toString(noradId),
+        sendRequest(apiHost+"/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+Integer.toString(noradId),
                 new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
@@ -123,7 +133,6 @@ public class SatellitePositionController {
                             //Log.i("Project", "Response for satellite: "+noradId);
                             if(satellitePositionPredictions.get(noradId) == null){
                                 try {
-                                    //Log.i("Project", "Replacing JSONOBject");
                                     satellitePositionPredictions.put(noradId, new JSONObject(responseTExt));
                                 } catch (JSONException e) {
                                     e.printStackTrace();
@@ -136,6 +145,9 @@ public class SatellitePositionController {
                                 }
                             }
 
+                            /*Trigger a request for satellites current position. This also updates
+                            the previously retrieved position*/
+                            getSatelliteCoordinates(noradId);
                             //Log.i("Project", "downloaded:\n"+satellitePositionPredictions.get(noradId).toString());
 
                             requestsPending--;
@@ -184,54 +196,55 @@ public class SatellitePositionController {
         try {
 
             LatLng returnPos;
-            long targetUnixTime = -1;
-            //Check if target unix time exists
-            if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime))){
-                targetUnixTime = unixTime;
-            }else if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime+1))){
-                targetUnixTime = unixTime+1;
-            }else if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime-1))){
-                targetUnixTime = unixTime-1;
+            long targetUnixTime = unixTime;
+
+            returnPos = new LatLng(
+                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                            .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat"),
+                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                            .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon"));
+
+            if(previouslySentLongLatBuffer.containsKey(targetNoradId)){
+                previouslySentLongLatBuffer.put(targetNoradId, returnPos);
+            }else{
+                previouslySentLongLatBuffer.replace(targetNoradId, returnPos);
             }
 
-            if(targetUnixTime != -1){
-                returnPos = new LatLng(
-                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                                .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat"),
-                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                                .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon"));
-                if(previouslySentLongLatBuffer.get(targetNoradId) == null){
-                    previouslySentLongLatBuffer.put(targetNoradId, returnPos);
-                }else{
-                    previouslySentLongLatBuffer.replace(targetNoradId, returnPos);
-                }
+            return returnPos;
 
-                return returnPos;
-            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return previouslySentLongLatBuffer.get(targetNoradId);
+
+    }
 
 
+    public double[] getSatelliteLatLongAlt(int targetNoradId){
+        long unixTime = System.currentTimeMillis() / 1000L;
 
-            /*returnPos = new LatLng(§
-                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lat"),
-                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").getJSONObject("position").getDouble("lon"));
-            previouslySentLongLatBuffer.put(targetNoradId, returnPos);
+        try {
 
-            return returnPos;*/
+            LatLng returnPos;
+            long targetUnixTime = unixTime;
+
+
+            double latitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat");
+            double longitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon");
+            double altitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("alt");
+            return new double[]{latitude, longitude, altitude};
 
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        Log.i("Project","Coudln't fetch current position, returning previous sent position");
-        //try {
-            //Log.i("Project",satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").toString()+"\n");
-        /*} catch (JSONException e1) {
-            e1.printStackTrace();
-        }*/
-        return previouslySentLongLatBuffer.get(targetNoradId);
 
+        return new double[0];
     }
-
 
 
     public void sendRequest(String requestUrl, Callback cB){
