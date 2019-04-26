@@ -38,7 +38,7 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
     private HashMap<Integer, Pair<Polyline, List<LatLng>>> satellitesPolylines;
 
     private int skipCounter = 0;
-    private final int skipTimer = 30;
+    private final int skipTimer = 70;
 
     private HashMap<Integer, Marker> satelliteMarkerBuffer;
 
@@ -163,12 +163,12 @@ public class MapsShowPositionOfSatellites extends FragmentActivity implements On
                     public void run(){
                         updateSatellites();
                         if(skipCounter == 0){
-                                    skipCounter = skipTimer;
+                            skipCounter = skipTimer;
                         }else{
                             skipCounter--;
                         }
                     }
-                }, SatellitePositionController.REFRESH_TIME_MS);
+                }, 1000);
             }
         });
 

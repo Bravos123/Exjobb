@@ -2,6 +2,7 @@ package com.example.navigationtesting.MapOfSatellitePositions;
 
 import android.util.Log;
 
+import com.example.navigationtesting.httpClient.OkHttpClientHandler;
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
@@ -10,6 +11,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -22,19 +24,17 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class SatellitePositionController {
-    public static final int REFRESH_TIME_MS = 2000;
+    public static final int REFRESH_TIME_MS = 3000;
     private HashMap<Integer, JSONObject> satellitePositionPredictions;
     private HashMap<Integer, LatLng> previouslySentLongLatBuffer;//In case we can't find the current unix time position to send back, send back the previous position
     private Timer scheduleLoadMorePredictions;
+    private Thread updateThread;
 
     private OnSatellitePositionControllerReadyCallback callback;
     private boolean firstTimeLoading = true;
 
-    private int requestsPending = 0;
-
     private JSONArray availibleSatellites;
 
-    private final OkHttpClient client = new OkHttpClient();
 
     private String apiHost = "http://178.62.193.218:8080";//"http://192.168.0.156:8888"
 
@@ -44,6 +44,7 @@ public class SatellitePositionController {
         previouslySentLongLatBuffer = new HashMap<>();
         this.callback = callback;
         scheduleLoadMorePredictions = new Timer();
+        updateThread = new Thread();
     }
 
 
@@ -89,12 +90,6 @@ public class SatellitePositionController {
 
 
     private void downloadPredictionData(){
-        //Log.i("Project", "Download more prediction data");
-        //Get how many satellites are availible
-        if(requestsPending != 0){
-            return;
-        }
-        requestsPending = availibleSatellites.length();
         for(int i=0; i<availibleSatellites.length(); i++){
             int satelliteNoradId;
 
@@ -108,8 +103,21 @@ public class SatellitePositionController {
             }
         }
 
+        scheduleLoadMorePredictions.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                downloadPredictionData();
+            }
+        }, REFRESH_TIME_MS);
     }
 
+
+    private void checkFirstBufferDownloadIsDone(){
+        if(firstTimeLoading && allSatellitesHaveBuffers()){
+            firstTimeLoading = false;
+            callback.onSatellitePositionControllerReadyCallback();
+        }
+    }
 
     private void retrieveSatellitePredictions(final int noradId){
         //Log.i("Project", "Send this request: "+"http://83.255.110.186/SatellitesNavigationApi/retrieveSatellitePosition?NORADID="+noradId);
@@ -129,19 +137,18 @@ public class SatellitePositionController {
                         try (ResponseBody responseBody = response.body()) {
                             if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
-                            String responseTExt = responseBody.string();
+                            String responseText = responseBody.string();
                             //Log.i("Project", "Response for satellite: "+noradId);
+
+                            JSONObject newPositions = new JSONObject(responseText);
+
                             if(satellitePositionPredictions.get(noradId) == null){
-                                try {
-                                    satellitePositionPredictions.put(noradId, new JSONObject(responseTExt));
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
-                                }
+                                satellitePositionPredictions.put(noradId, newPositions);
                             }else{
-                                try {
-                                    satellitePositionPredictions.replace(noradId, new JSONObject(responseTExt));
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
+                                if(newContainerHasMoreFuturePredictions(
+                                        satellitePositionPredictions.get(noradId).getJSONObject("positions").keys(),
+                                        newPositions.getJSONObject("positions").keys())){
+                                    satellitePositionPredictions.replace(noradId, new JSONObject(responseText));
                                 }
                             }
 
@@ -150,35 +157,56 @@ public class SatellitePositionController {
                             getSatelliteCoordinates(noradId);
                             //Log.i("Project", "downloaded:\n"+satellitePositionPredictions.get(noradId).toString());
 
-                            requestsPending--;
-
-                            if(requestsPending <= 0){
-                                requestsPending = 0;
-                                requestsAreComplete();
-                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
 
-
+                        checkFirstBufferDownloadIsDone();
 
                     }
                 });
     }
 
-    private void requestsAreComplete(){
-        if(firstTimeLoading){
-            firstTimeLoading = false;
-            callback.onSatellitePositionControllerReadyCallback();
-        }
-        scheduleLoadMorePredictions.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                downloadPredictionData();
+    public boolean newContainerHasMoreFuturePredictions(Iterator<String> positionsOld, Iterator<String> positionsNew){
+        //Check if this new positions container contains predictions that are
+        // further into the future the future than what is currently being used
+        //This is because new positions are loaded every 5 seconds without any order
+        long furthestPredictionNew = 0;
+        while(positionsNew.hasNext()){
+            long pp = Long.parseLong(positionsNew.next());
+            if(furthestPredictionNew < pp){
+                furthestPredictionNew = pp;
             }
-        }, REFRESH_TIME_MS);
+        }
+
+        long furthestPredictionOld = 0;
+        while(positionsOld.hasNext()){
+            long pp = Long.parseLong(positionsOld.next());
+            if(furthestPredictionOld < pp){
+                furthestPredictionOld = pp;
+            }
+        }
+        if(furthestPredictionNew > furthestPredictionOld){
+            return true;
+        }
+        return false;
     }
 
 
 
+
+    private boolean allSatellitesHaveBuffers(){
+        for(int i=0; i<availibleSatellites.length(); i++){
+            try {
+                if(!satellitePositionPredictions.containsKey(availibleSatellites.getInt(i))){
+                    return false;
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return true;
+    }
 
 
 
@@ -193,28 +221,29 @@ public class SatellitePositionController {
     public LatLng getSatelliteCoordinates(int targetNoradId){
         long unixTime = System.currentTimeMillis() / 1000L;
 
+
         try {
+            if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime))){
+                LatLng returnPos;
 
-            LatLng returnPos;
-            long targetUnixTime = unixTime;
+                returnPos = new LatLng(
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(unixTime)).getDouble("lat"),
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(unixTime)).getDouble("lon"));
 
-            returnPos = new LatLng(
-                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                            .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat"),
-                    satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                            .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon"));
+                if(previouslySentLongLatBuffer.containsKey(targetNoradId)){
+                    previouslySentLongLatBuffer.put(targetNoradId, returnPos);
+                }else{
+                    previouslySentLongLatBuffer.replace(targetNoradId, returnPos);
+                }
 
-            if(previouslySentLongLatBuffer.containsKey(targetNoradId)){
-                previouslySentLongLatBuffer.put(targetNoradId, returnPos);
-            }else{
-                previouslySentLongLatBuffer.replace(targetNoradId, returnPos);
+                return returnPos;
             }
-
-            return returnPos;
-
         } catch (JSONException e) {
             e.printStackTrace();
         }
+
 
         return previouslySentLongLatBuffer.get(targetNoradId);
 
@@ -248,11 +277,16 @@ public class SatellitePositionController {
 
 
     public void sendRequest(String requestUrl, Callback cB){
-        Request request = new Request.Builder()
-                .url(requestUrl)
-                .build();
-
-        client.newCall(request).enqueue(cB);
+        updateThread = new Thread(){
+            @Override
+            public void run(){
+                Request request = new Request.Builder()
+                        .url(requestUrl)
+                        .build();
+                OkHttpClientHandler.getHttpClient().newCall(request).enqueue(cB);
+            }
+        };
+        updateThread.run();
     }
 
 

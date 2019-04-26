@@ -10,7 +10,7 @@ import com.example.navigationtesting.SatellitePseudorangeController.OnPseudorang
 import com.example.navigationtesting.SatellitePseudorangeController.PseudorangeController;
 import com.example.navigationtesting.Satellite.LatLngAlt;
 import com.example.navigationtesting.trueRangeMultilateration.SpacePoint;
-import com.example.navigationtesting.trueRangeMultilateration.TrueRangeMultilateration;
+import com.example.navigationtesting.trueRangeMultilateration.BancroftMethod;
 
 import java.util.ArrayList;
 
@@ -83,7 +83,7 @@ public class UserLocationGenerator implements OnSatellitePositionControllerReady
                 SpacePoint sp = new SpacePoint(satCoordsEllipsoid[0], satCoordsEllipsoid[1], satCoordsEllipsoid[2], p.second);
                 spacePointParameters.add(sp);
             }
-            lastKnownPosition = TrueRangeMultilateration.calculateSpacePoint(spacePointParameters);
+            lastKnownPosition = BancroftMethod.calculateSpacePoint(spacePointParameters);
 
         }
 

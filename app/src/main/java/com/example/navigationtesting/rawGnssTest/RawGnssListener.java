@@ -87,7 +87,7 @@ public class RawGnssListener{
                     //Looping through each satellite in the constelation?
                     for(GnssMeasurement gnssM : measurements){
                         //gnssM.getPseudorangeRateMetersPerSecond();
-                        //Log.i("Project", );
+                        Log.i("Project", gnssM.toString());
 
 
                         gnssM.getConstellationType();

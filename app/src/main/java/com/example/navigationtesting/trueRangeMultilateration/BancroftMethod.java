@@ -4,14 +4,11 @@ import com.example.navigationtesting.Satellite.LatLngAlt;
 
 import java.util.ArrayList;
 
-public class TrueRangeMultilateration {
+public class BancroftMethod {
 
 
 
     public static LatLngAlt calculateSpacePoint(ArrayList<SpacePoint> spacePointsList){
-        /*Implementerat från:
-        * https://en.wikipedia.org/wiki/True_range_multilateration
-        * at part: "Three Cartesian dimensions, three measured slant ranges"*/
         double x = 0;
         double y = 0;
         double z = 0;
@@ -48,9 +45,9 @@ public class TrueRangeMultilateration {
 
 
         //Output
-        double xlon = 0;
-        double xlat = 0;
-        double h = 0;
+        double xlon;
+        double xlat;
+        double h;
 
 
         double xl = Math.atan2(y, x);
