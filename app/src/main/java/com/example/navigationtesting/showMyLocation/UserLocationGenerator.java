@@ -10,7 +10,7 @@ import com.example.navigationtesting.SatellitePseudorangeController.OnPseudorang
 import com.example.navigationtesting.SatellitePseudorangeController.PseudorangeController;
 import com.example.navigationtesting.Satellite.LatLngAlt;
 import com.example.navigationtesting.trueRangeMultilateration.SpacePoint;
-import com.example.navigationtesting.trueRangeMultilateration.BancroftMethod;
+import com.example.navigationtesting.trueRangeMultilateration.SolvePositionSystem;
 
 import java.util.ArrayList;
 
@@ -60,10 +60,14 @@ public class UserLocationGenerator implements OnSatellitePositionControllerReady
 
 
     private void generateNewPosition(){
-        calculateCoordinates();
-        for(OnUserLocationGeneratorNewPosition callback : callbacksForNewPositions){
-            callback.onUserLocationGeneratorNewPosition(lastKnownPosition);
+        //Log.i("Project", "Done");
+        lastKnownPosition = calculateCoordinates();
+        if(lastKnownPosition != null){
+            for(OnUserLocationGeneratorNewPosition callback : callbacksForNewPositions){
+                callback.onUserLocationGeneratorNewPosition(lastKnownPosition);
+            }
         }
+
     }
 
     private void checkCanProceed(){
@@ -73,21 +77,26 @@ public class UserLocationGenerator implements OnSatellitePositionControllerReady
     }
 
 
-    private void calculateCoordinates(){
-        Log.i("Project", "--------------------------------------");
+    private LatLngAlt calculateCoordinates(){
+        Log.i("Project", "\n\n");
         ArrayList<Pair<Integer, Double>> arrayOfSatellitePseudoranges = pseudorangeController.getArrayOfSatellitePseudoranges();
-        if(arrayOfSatellitePseudoranges.size() > 3){
+        if(arrayOfSatellitePseudoranges.size() > 2){
             ArrayList<SpacePoint> spacePointParameters = new ArrayList<>();
             for(Pair<Integer, Double> p : arrayOfSatellitePseudoranges){
                 double[] satCoordsEllipsoid = satelliteController.getSatelliteLatLongAlt(p.first);
                 SpacePoint sp = new SpacePoint(satCoordsEllipsoid[0], satCoordsEllipsoid[1], satCoordsEllipsoid[2], p.second);
                 spacePointParameters.add(sp);
+                if(spacePointParameters.size() == 3){
+                    break;
+                }
             }
-            lastKnownPosition = BancroftMethod.calculateSpacePoint(spacePointParameters);
+            return SolvePositionSystem.calculateSpacePoint(spacePointParameters);
 
+        }else{
+            //Log.i("Project", "Too few satellites to calculate: "+arrayOfSatellitePseudoranges.size());
         }
 
-
+        return null;
     }
 
 }

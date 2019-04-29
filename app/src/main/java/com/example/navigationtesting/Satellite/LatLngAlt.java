@@ -30,4 +30,12 @@ public class LatLngAlt {
         LatLng ll = new LatLng(latitude, longitude);
         return ll;
     }
+
+    @Override
+    public String toString(){
+        return "latitude: "+latitude
+                +"\nlongitude: "+longitude
+                +"\naltitude: "+altitude
+                +"\n";
+    }
 }

@@ -2,12 +2,14 @@ package com.example.navigationtesting.showMyLocation;
 
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.example.navigationtesting.R;
 import com.example.navigationtesting.Satellite.LatLngAlt;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -43,12 +45,31 @@ public class ShowMyLocation extends FragmentActivity implements OnMapReadyCallba
     }
 
     @Override
-    public void onUserLocationGeneratorNewPosition(LatLngAlt pos) {
-        if(myLocation == null){
-            MarkerOptions sattMarkerOption = new MarkerOptions();
-            sattMarkerOption.title("You are here");
-            myLocation = mMap.addMarker(sattMarkerOption);
+    public void onUserLocationGeneratorNewPosition(final LatLngAlt pos) {
+        if(pos == null){
+            Log.i("Project", "pos is NULL");
+        }else{
+            Log.i("Project", pos.toString());
+            try{
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(myLocation == null){
+                            MarkerOptions sattMarkerOption = new MarkerOptions();
+                            sattMarkerOption.title("You are here");
+                            myLocation = mMap.addMarker(sattMarkerOption);
+                        }
+                        LatLng nLL = new LatLng(pos.latitude(), pos.longitude());
+                        myLocation.setPosition(pos.toLatLng());
+                    }
+                });
+            }catch(Exception e){
+                Log.i("Project", e.getMessage());
+            }
+
         }
-        myLocation.setPosition(pos.toLatLng());
+
+
+
     }
 }

@@ -65,25 +65,28 @@ public class PseudorangeController {
                     //Calculate pseudorange
                     Collection<GnssMeasurement> measurements = event.getMeasurements();
                     //Looping through each satellite in the constelation?
+                    //Log.i("Project", "measurements size: "+measurements.size());
+                    int counter = 0;
                     for(GnssMeasurement gnssM : measurements){
-                        //Log.i("Project", );
+                        //Log.i("Project", "counter: "+counter);
+                        //Log.i("Project", gnssM.toString());
 
 
-                        gnssM.getConstellationType();
-                        double pseudorange = CalculateSatellitePseudorange.calculatePseudorange(gnssM, event);
-                        if(pseudorange <= 0){
-                            return;
+                        double pseudorange = CalculateSatellitePseudorange.calculatePseudorange(gnssM, event, "meters");
+                        if(SatelliteNORADId.noradIdExistFromSvId(gnssM.getSvid())) {
+                            try {
+                                updateSatellitePseudorange(SatelliteNORADId.getGalileoNORADId(gnssM.getSvid()), pseudorange);
+                            } catch (NoradIdDoesNotExist noradIdDoesNotExist) {
+                                noradIdDoesNotExist.printStackTrace();
+                            }
+                        }else{
+                            //Log.i("Project", "ERROR: there is no norad id in app for svId "+ gnssM.getSvid());
                         }
 
-                        try {
-                            int satelliteNoradId = SatelliteNORADId.getGalileoNORADId(gnssM.getSvid());
-                            updateSatellitePseudorange(satelliteNoradId, pseudorange);
-                        } catch (NoradIdDoesNotExist noradIdDoesNotExist) {
-                            noradIdDoesNotExist.printStackTrace();
-                        }
 
                     }
 
+                    //Log.i("Project", "Size: "+Integer.toString(noradAndPseudorande.size()));
                     readyCallback.onPseudorangeControllerReadyCallback();
 
                 }
@@ -96,8 +99,14 @@ public class PseudorangeController {
 
 
     private void updateSatellitePseudorange(int noradId, double newPseudoRange){
-        Log.i("Project", "newPseudoRange: "+newPseudoRange);
-        //Log.i("Project", "New pseudorange: "+newPseudoRange);
+        if((newPseudoRange/1000L) != 0){
+            //Log.i("Project", "New pseudorange: "+(newPseudoRange/1000L));
+        }
+
+        if(newPseudoRange/1000L <= 0){
+            return;
+        }
+
         Pair<Long, Double> addTime = new Pair<>(System.currentTimeMillis() / 1000L, newPseudoRange);
         if(noradAndPseudorande.get(noradId) != null) {
             noradAndPseudorande.replace(noradId, addTime);
@@ -106,35 +115,21 @@ public class PseudorangeController {
         }
     }
 
-    public double getSatellitePseudorange(String noradId){
-        if(noradAndPseudorande.get(noradId) == null){
-            return -1;
-        }
-        Long currentUnixTime = System.currentTimeMillis() / 1000L;
-        if(currentUnixTime - noradAndPseudorande.get(noradId).first > 60){//If the pseudorange was added 1 minute ago then it's too old to be used
-            return -1;
-        }
-        return noradAndPseudorande.get(noradId).second;
-    }
-
 
     public ArrayList<Pair<Integer, Double>> getArrayOfSatellitePseudoranges(){
         ArrayList<Pair<Integer, Double>> sattsAndPseudoR = new ArrayList<>();
 
         Long currentUnixTime = System.currentTimeMillis() / 1000L;
         int precision = 5;
-        do{
+        while(sattsAndPseudoR.size()<4 && precision < 60){
             sattsAndPseudoR.clear();
             for(int noradId : noradIdSet){
-                if(currentUnixTime - noradAndPseudorande.get(noradId).first < precision){//If the pseudorange date is 10 seconds or younger
+                if(currentUnixTime - noradAndPseudorande.get(noradId).first < precision && noradAndPseudorande.get(noradId).second > 0){//If the pseudorange date is 10 seconds or younger
                     sattsAndPseudoR.add(new Pair<>(noradId, noradAndPseudorande.get(noradId).second));
                 }
             }
             precision++;
-        }while(sattsAndPseudoR.size()<4 && precision < 120);
-
-
-
+        }
 
         return sattsAndPseudoR;
     }

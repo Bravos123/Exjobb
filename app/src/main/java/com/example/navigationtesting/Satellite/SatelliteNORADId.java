@@ -30,7 +30,7 @@ public class SatelliteNORADId {
       String[] databaseLines = galileoDatabasePart.split("\\n");
 
       for(String line : databaseLines){
-          if(line.indexOf("GALILEO "+Integer.toString(svid)) != -1){
+          if(line.contains("GALILEO " + Integer.toString(svid))){
               String parsedLine = line.replaceAll(" [ \\t]+", " ");
               String noradId = parsedLine.split(" ")[1];
               return Integer.parseInt(noradId);
@@ -41,6 +41,17 @@ public class SatelliteNORADId {
 
 
     };
+
+
+    public static boolean noradIdExistFromSvId(int svid){
+        String[] databaseLines = galileoDatabasePart.split("\\n");
+        for(String line : databaseLines){
+            if(line.contains("GALILEO " + Integer.toString(svid))){
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static final String getGPSNORADId(int svid){
         return null;

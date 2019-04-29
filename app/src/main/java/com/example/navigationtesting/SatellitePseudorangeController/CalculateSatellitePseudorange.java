@@ -17,7 +17,7 @@ import static android.location.GnssStatus.CONSTELLATION_GPS;
 
 public class CalculateSatellitePseudorange {
 
-    public static final double calculatePseudorange(GnssMeasurement gnssM, GnssMeasurementsEvent event){
+    public static final double calculatePseudorange(GnssMeasurement gnssM, GnssMeasurementsEvent event, String conversionType){
         double TrxGnss = event.getClock().getTimeNanos() + gnssM.getTimeOffsetNanos()
                 - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
         //double TrxGnss = event.getClock().getTimeNanos() - (event.getClock().getFullBiasNanos() + event.getClock().getBiasNanos());
@@ -94,7 +94,6 @@ public class CalculateSatellitePseudorange {
                     double tRxGalileoE1_2nd = galileoTime % Constants.NumberNanoSeconds100Milli;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
                     pseudoRange = ((galileoTime - tTxGalileo) % Constants.NumberNanoSeconds100Milli) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
-
                 }
 
             }
@@ -108,6 +107,11 @@ public class CalculateSatellitePseudorange {
             pseudoRange = 0;
         }*/
 
+        if(conversionType.equals("meters")){
+            return pseudoRange;
+        }else if(conversionType.equals("kilometers")){
+            return pseudoRange/1000L;
+        }
 
         return pseudoRange;
     }

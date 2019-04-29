@@ -1,22 +1,57 @@
 package com.example.navigationtesting.trueRangeMultilateration;
 
+import android.util.Log;
+
 import com.example.navigationtesting.Satellite.LatLngAlt;
+
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.DecompositionSolver;
+import org.apache.commons.math3.linear.LUDecomposition;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 
 import java.util.ArrayList;
 
-public class BancroftMethod {
+public class SolvePositionSystem {
 
 
 
     public static LatLngAlt calculateSpacePoint(ArrayList<SpacePoint> spacePointsList){
+        //Log.i("Project", "calculateSpacePoint: "+spacePointsList.size());
         double x = 0;
         double y = 0;
         double z = 0;
 
+        /*Log.i("Project", "\n\n\n\n######################################################");
+        for(SpacePoint sp : spacePointsList){
+            Log.i("Project", "x: "+sp.getCartesianX()+"\ny: "+sp.getCartesianY()+"\nz: "+sp.getCartesianZ()+"\nDistance: "+sp.getPseudorangeToTarget()+"\n\n");
+        }*/
 
 
+        double[][] coefficientsArray = new double[spacePointsList.size()][3];
+        for(int i=0; i<spacePointsList.size(); i++){
+            SpacePoint sp = spacePointsList.get(i);
+            coefficientsArray[i] = new double[]{sp.getCartesianX(), sp.getCartesianY(), sp.getCartesianZ()};
+        }
 
+        RealMatrix coefficients = new Array2DRowRealMatrix(coefficientsArray, false);
 
+        DecompositionSolver solver = new LUDecomposition(coefficients).getSolver();
+
+        double[] constantsArray = new double[spacePointsList.size()];
+        for(int i=0; i<spacePointsList.size(); i++){
+            constantsArray[i] = spacePointsList.get(i).getPseudorangeToTarget();
+        }
+
+        RealVector constants = new ArrayRealVector(constantsArray, false);
+        RealVector solution = solver.solve(constants);
+
+        x = solution.getEntry(0);
+        y = solution.getEntry(1);
+        z = solution.getEntry(2);
+
+        //Log.i("Project", "Positions: ("+x+", "+y+", "+z+")");
 
         double[] ellipsoidalCoords = convertCartesianToEllipsoidalCoordinates(new double[]{x, y, z});
         return new LatLngAlt(ellipsoidalCoords[0], ellipsoidalCoords[1], ellipsoidalCoords[2]);

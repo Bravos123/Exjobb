@@ -18,15 +18,15 @@ public class SpacePoint {
 
 
 
-    public double getX(){
+    public double getCartesianX(){
         return x;
     }
 
-    public double getY(){
+    public double getCartesianY(){
         return y;
     }
 
-    public double getZ(){
+    public double getCartesianZ(){
         return z;
     }
 
@@ -47,6 +47,7 @@ public class SpacePoint {
         double f = 1.0/298.257223563;
         double b = a*(1.0-f);
         double e2=(Math.pow(a, 2)-Math.pow(b, 2))/Math.pow(a, 2);
+        //###############################################################################################
 
         double N = a/(Math.sqrt(1-e2*Math.pow(Math.sin(latitude), 2)));
 
