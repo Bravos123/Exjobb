@@ -121,10 +121,10 @@ public class PseudorangeController {
 
         Long currentUnixTime = System.currentTimeMillis() / 1000L;
         int precision = 5;
-        while(sattsAndPseudoR.size()<4 && precision < 60){
+        while(sattsAndPseudoR.size() < 3 && precision < 5){
             sattsAndPseudoR.clear();
             for(int noradId : noradIdSet){
-                if(currentUnixTime - noradAndPseudorande.get(noradId).first < precision && noradAndPseudorande.get(noradId).second > 0){//If the pseudorange date is 10 seconds or younger
+                if(currentUnixTime - noradAndPseudorande.get(noradId).first < precision && noradAndPseudorande.get(noradId).second > 5){//If the pseudorange date is 10 seconds or younger
                     sattsAndPseudoR.add(new Pair<>(noradId, noradAndPseudorande.get(noradId).second));
                 }
             }

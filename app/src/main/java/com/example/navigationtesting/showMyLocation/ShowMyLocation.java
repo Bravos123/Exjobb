@@ -49,7 +49,7 @@ public class ShowMyLocation extends FragmentActivity implements OnMapReadyCallba
         if(pos == null){
             Log.i("Project", "pos is NULL");
         }else{
-            Log.i("Project", pos.toString());
+            //Log.i("Project", pos.toString());
             try{
                 runOnUiThread(new Runnable() {
                     @Override
@@ -57,10 +57,13 @@ public class ShowMyLocation extends FragmentActivity implements OnMapReadyCallba
                         if(myLocation == null){
                             MarkerOptions sattMarkerOption = new MarkerOptions();
                             sattMarkerOption.title("You are here");
+                            sattMarkerOption.position(pos.toLatLng());
                             myLocation = mMap.addMarker(sattMarkerOption);
+                        }else{
+                            myLocation.setPosition(pos.toLatLng());
                         }
-                        LatLng nLL = new LatLng(pos.latitude(), pos.longitude());
-                        myLocation.setPosition(pos.toLatLng());
+
+
                     }
                 });
             }catch(Exception e){

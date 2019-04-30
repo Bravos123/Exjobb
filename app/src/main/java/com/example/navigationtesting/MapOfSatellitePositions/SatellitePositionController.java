@@ -2,6 +2,7 @@ package com.example.navigationtesting.MapOfSatellitePositions;
 
 import android.util.Log;
 
+import com.example.navigationtesting.Satellite.LatLngAlt;
 import com.example.navigationtesting.httpClient.OkHttpClientHandler;
 import com.google.android.gms.maps.model.LatLng;
 
@@ -26,7 +27,10 @@ import okhttp3.ResponseBody;
 public class SatellitePositionController {
     public static final int REFRESH_TIME_MS = 3000;
     private HashMap<Integer, JSONObject> satellitePositionPredictions;
+
     private HashMap<Integer, LatLng> previouslySentLongLatBuffer;//In case we can't find the current unix time position to send back, send back the previous position
+    private HashMap<Integer, LatLngAlt> previouslySentLatLngAltBuffer;
+
     private Timer scheduleLoadMorePredictions;
     private Thread updateThread;
 
@@ -42,6 +46,7 @@ public class SatellitePositionController {
     public SatellitePositionController(OnSatellitePositionControllerReadyCallback callback){
         satellitePositionPredictions = new HashMap<>();
         previouslySentLongLatBuffer = new HashMap<>();
+        previouslySentLatLngAltBuffer = new HashMap<>();
         this.callback = callback;
         scheduleLoadMorePredictions = new Timer();
         updateThread = new Thread();
@@ -221,7 +226,7 @@ public class SatellitePositionController {
     public LatLng getSatelliteCoordinates(int targetNoradId){
         long unixTime = System.currentTimeMillis() / 1000L;
 
-
+        //Log.i("Project", "Satellite positions has "+targetNoradId+": "+satellitePositionPredictions.containsKey(targetNoradId));
         try {
             if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime))){
                 LatLng returnPos;
@@ -250,29 +255,36 @@ public class SatellitePositionController {
     }
 
 
-    public double[] getSatelliteLatLongAlt(int targetNoradId){
+    public LatLngAlt getSatelliteLatLongAlt(int targetNoradId){
         long unixTime = System.currentTimeMillis() / 1000L;
 
+        //Log.i("Project", "Satellite positions has "+targetNoradId+": "+satellitePositionPredictions.containsKey(targetNoradId));
         try {
+            if(satellitePositionPredictions.get(targetNoradId).getJSONObject("positions").has(Long.toString(unixTime))){
+                LatLngAlt returnPos;
 
-            LatLng returnPos;
-            long targetUnixTime = unixTime;
+                returnPos = new LatLngAlt(
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(unixTime)).getDouble("lat"),
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(unixTime)).getDouble("lon"),
+                        satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
+                                .getJSONObject(Long.toString(unixTime)).getDouble("alt"));
 
+                if(previouslySentLatLngAltBuffer.containsKey(targetNoradId)){
+                    previouslySentLatLngAltBuffer.put(targetNoradId, returnPos);
+                }else{
+                    previouslySentLatLngAltBuffer.replace(targetNoradId, returnPos);
+                }
 
-            double latitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("lat");
-            double longitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("lon");
-            double altitude = satellitePositionPredictions.get(targetNoradId).getJSONObject("positions")
-                    .getJSONObject(Long.toString(targetUnixTime)).getDouble("alt");
-            return new double[]{latitude, longitude, altitude};
-
-
+                return returnPos;
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
-        return new double[0];
+
+        return previouslySentLatLngAltBuffer.get(targetNoradId);
     }
 
 

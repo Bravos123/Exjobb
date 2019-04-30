@@ -35,7 +35,9 @@ public class SpacePoint {
     }
 
 
-
+    public String equationString(){
+        return "(x+"+x/10000+")^(2)+ (y+"+y/10000+")^(2)+ (z+"+z/10000+")^(2)="+pseudorangeToTarget/10000;
+    }
 
     private double[] ellipsoidalToCartesianCoords(double latitude, double longitude, double h){
         /*

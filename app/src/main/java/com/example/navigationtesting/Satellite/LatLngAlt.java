@@ -26,9 +26,8 @@ public class LatLngAlt {
         return altitude;
     }
 
-    public LatLng toLatLng(){
-        LatLng ll = new LatLng(latitude, longitude);
-        return ll;
+    public LatLng toLatLng(){;
+        return new LatLng(latitude, longitude);
     }
 
     @Override

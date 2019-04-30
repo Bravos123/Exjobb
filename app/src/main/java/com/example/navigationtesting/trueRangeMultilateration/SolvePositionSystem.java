@@ -18,6 +18,7 @@ public class SolvePositionSystem {
 
 
     public static LatLngAlt calculateSpacePoint(ArrayList<SpacePoint> spacePointsList){
+        //TO:DO pseudoranges seem too small
         //Log.i("Project", "calculateSpacePoint: "+spacePointsList.size());
         double x = 0;
         double y = 0;
@@ -29,11 +30,14 @@ public class SolvePositionSystem {
         }*/
 
 
+        Log.i("Project", "Start of system");
         double[][] coefficientsArray = new double[spacePointsList.size()][3];
         for(int i=0; i<spacePointsList.size(); i++){
             SpacePoint sp = spacePointsList.get(i);
+            Log.i("Project", sp.equationString());
             coefficientsArray[i] = new double[]{sp.getCartesianX(), sp.getCartesianY(), sp.getCartesianZ()};
         }
+        Log.i("Project", "End of system");
 
         RealMatrix coefficients = new Array2DRowRealMatrix(coefficientsArray, false);
 
@@ -47,6 +51,7 @@ public class SolvePositionSystem {
         RealVector constants = new ArrayRealVector(constantsArray, false);
         RealVector solution = solver.solve(constants);
 
+
         x = solution.getEntry(0);
         y = solution.getEntry(1);
         z = solution.getEntry(2);
@@ -54,7 +59,9 @@ public class SolvePositionSystem {
         //Log.i("Project", "Positions: ("+x+", "+y+", "+z+")");
 
         double[] ellipsoidalCoords = convertCartesianToEllipsoidalCoordinates(new double[]{x, y, z});
-        return new LatLngAlt(ellipsoidalCoords[0], ellipsoidalCoords[1], ellipsoidalCoords[2]);
+        return new LatLngAlt(ellipsoidalCoords[0] * (180/Math.PI),
+                ellipsoidalCoords[1] * (180/Math.PI),
+                ellipsoidalCoords[2] * (180/Math.PI));
     }
 
 

@@ -78,19 +78,30 @@ public class UserLocationGenerator implements OnSatellitePositionControllerReady
 
 
     private LatLngAlt calculateCoordinates(){
-        Log.i("Project", "\n\n");
+        //Log.i("Project", "\n\n");
         ArrayList<Pair<Integer, Double>> arrayOfSatellitePseudoranges = pseudorangeController.getArrayOfSatellitePseudoranges();
         if(arrayOfSatellitePseudoranges.size() > 2){
             ArrayList<SpacePoint> spacePointParameters = new ArrayList<>();
+            //Log.i("Project", "arrayOfSatellitePseudoranges: "+arrayOfSatellitePseudoranges.size());
             for(Pair<Integer, Double> p : arrayOfSatellitePseudoranges){
-                double[] satCoordsEllipsoid = satelliteController.getSatelliteLatLongAlt(p.first);
-                SpacePoint sp = new SpacePoint(satCoordsEllipsoid[0], satCoordsEllipsoid[1], satCoordsEllipsoid[2], p.second);
-                spacePointParameters.add(sp);
-                if(spacePointParameters.size() == 3){
-                    break;
+                //Log.i("Project", "Pseudorange: "+p.second);
+                LatLngAlt satCoordsEllipsoid = satelliteController.getSatelliteLatLongAlt(p.first);
+                //Log.i("Project", satCoordsEllipsoid.toString());
+                //Log.i("Project", "satCoordsEllipsoid: "+satCoordsEllipsoid.length);
+                if(satCoordsEllipsoid != null){
+                    SpacePoint sp = new SpacePoint(satCoordsEllipsoid.latitude(), satCoordsEllipsoid.longitude(), satCoordsEllipsoid.altitude(), p.second);
+                    spacePointParameters.add(sp);
+                    if(spacePointParameters.size() == 3){
+                        break;
+                    }
                 }
+
             }
-            return SolvePositionSystem.calculateSpacePoint(spacePointParameters);
+
+            if(spacePointParameters.size() >= 3){
+                return SolvePositionSystem.calculateSpacePoint(spacePointParameters);
+            }
+
 
         }else{
             //Log.i("Project", "Too few satellites to calculate: "+arrayOfSatellitePseudoranges.size());
