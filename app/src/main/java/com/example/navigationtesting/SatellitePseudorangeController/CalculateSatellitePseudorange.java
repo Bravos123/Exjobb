@@ -90,7 +90,7 @@ public class CalculateSatellitePseudorange {
                     double tRxGalileoTOW = TrxGnss % Constants.NUMBER_NANO_SECONDS_PER_WEEK;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
                     pseudoRange = (tRxGalileoTOW - tTxGalileo) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
-                }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){//FIXME GIVES NEGATIVE RESULTS: DON'T THINK THAT'S SUPPOSED TO HAPPEN
+                }else if((gnssM.getState() & STATE_GAL_E1C_2ND_CODE_LOCK) > 0){
                     double tRxGalileoE1_2nd = galileoTime % Constants.NumberNanoSeconds100Milli;
                     //Log.i("Project", "CONSTELLATION_GALILEO");
                     pseudoRange = ((galileoTime - tTxGalileo) % Constants.NumberNanoSeconds100Milli) * 1e-9 * (double)Constants.SPEED_OF_LIGHT;
